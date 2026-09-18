@@ -15,6 +15,11 @@ import PatternGameScreen from './src/screens/PatternGameScreen';
 import OddOneOutScreen from './src/screens/OddOneOutScreen';
 import DrawScreen from './src/screens/DrawScreen';
 import AnimalWorldScreen from './src/screens/AnimalWorldScreen';
+import WhatsMissingScreen from './src/screens/WhatsMissingScreen';
+import PredictScreen from './src/screens/PredictScreen';
+import RobotProgramScreen from './src/screens/RobotProgramScreen';
+import SpeedChallengeScreen from './src/screens/SpeedChallengeScreen';
+import SecretRoomScreen from './src/screens/SecretRoomScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,6 +40,11 @@ export default function App() {
                 <Stack.Screen name="OddOneOut" component={OddOneOutScreen} />
                 <Stack.Screen name="Draw" component={DrawScreen} />
                 <Stack.Screen name="AnimalWorld" component={AnimalWorldScreen} />
+                <Stack.Screen name="WhatsMissing" component={WhatsMissingScreen} />
+                <Stack.Screen name="Predict" component={PredictScreen} />
+                <Stack.Screen name="Robot" component={RobotProgramScreen} />
+                <Stack.Screen name="Speed" component={SpeedChallengeScreen} />
+                <Stack.Screen name="SecretRoom" component={SecretRoomScreen} />
               </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="auto" />
