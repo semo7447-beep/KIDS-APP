@@ -1,161 +1,130 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Animated, Image, LayoutChangeEvent, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Speech from 'expo-speech';
+import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
-import { GAME_CARDS } from '../data/games';
-import WorldHeader from '../components/WorldHeader';
+import { ROBOT_MISSIONS, Dir } from '../data/robotMissions';
+import { Zone } from '../types/mission';
 
-const CARD = GAME_CARDS.find((c) => c.id === 'robot')!;
-
-const GRID_SIZE = 5;
-const CELL = 58;
-const TOTAL_ROUNDS = 5;
-const MAX_COMMANDS = 12;
-const OBSTACLES_BY_ROUND = [2, 3, 4, 5, 6];
-
-type Dir = 'up' | 'down' | 'left' | 'right';
-type Pos = { row: number; col: number };
-
-const ARROWS: Record<Dir, string> = { up: '⬆️', down: '⬇️', left: '⬅️', right: '➡️' };
-const DELTA: Record<Dir, { row: number; col: number }> = {
-  up: { row: -1, col: 0 },
-  down: { row: 1, col: 0 },
-  left: { row: 0, col: -1 },
-  right: { row: 0, col: 1 },
-};
-
-function randomPos(): Pos {
-  return { row: Math.floor(Math.random() * GRID_SIZE), col: Math.floor(Math.random() * GRID_SIZE) };
+function zoneStyle(zone: Zone) {
+  return {
+    left: `${zone.left}%` as const,
+    top: `${zone.top}%` as const,
+    width: `${zone.width}%` as const,
+    height: `${zone.height}%` as const,
+  };
 }
 
-function key(p: Pos) {
-  return `${p.row},${p.col}`;
-}
-
-function buildRound(roundIndex: number): { start: Pos; goal: Pos; obstacles: Set<string> } {
-  const start = randomPos();
-  let goal = randomPos();
-  let guard = 0;
-  while (goal.row === start.row && goal.col === start.col && guard < 20) {
-    goal = randomPos();
-    guard++;
-  }
-  const obstacleCount = OBSTACLES_BY_ROUND[Math.min(roundIndex, OBSTACLES_BY_ROUND.length - 1)];
-  const obstacles = new Set<string>();
-  guard = 0;
-  while (obstacles.size < obstacleCount && guard < 100) {
-    const p = randomPos();
-    const k = key(p);
-    if (k !== key(start) && k !== key(goal)) obstacles.add(k);
-    guard++;
-  }
-  return { start, goal, obstacles };
-}
+const DIR_ICON: Record<Dir, string> = { forward: '⬆️', left: '⬅️', right: '➡️' };
 
 export default function RobotScreen() {
   const { t, lang } = useLanguage();
-  const [roundIndex, setRoundIndex] = useState(0);
-  const [round, setRound] = useState(() => buildRound(0));
-  const [robotPos, setRobotPos] = useState<Pos>(round.start);
-  const [commands, setCommands] = useState<Dir[]>([]);
+  const navigation = useNavigation();
+  const [missionIndex, setMissionIndex] = useState(0);
+  const [sequence, setSequence] = useState<Dir[]>([]);
   const [running, setRunning] = useState(false);
-  const [feedback, setFeedback] = useState<'success' | 'fail' | null>(null);
-  const finished = roundIndex >= TOTAL_ROUNDS;
-  const runToken = useRef(0);
+  const [wrapWidth, setWrapWidth] = useState(0);
+  const [feedback, setFeedback] = useState<'fail' | null>(null);
+  const spritePos = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const spriteVisible = useRef(false);
+  const [, forceRender] = useState(0);
 
-  useEffect(() => {
-    setRobotPos(round.start);
-    setCommands([]);
-    setFeedback(null);
-  }, [round]);
+  const mission = ROBOT_MISSIONS[missionIndex];
+  const finished = missionIndex >= ROBOT_MISSIONS.length;
+  const wrapHeight = wrapWidth ? wrapWidth / mission?.imageRatio : 0;
 
-  useEffect(() => {
-    if (!finished) setRound(buildRound(roundIndex));
-  }, [roundIndex]);
+  const onWrapLayout = (e: LayoutChangeEvent) => setWrapWidth(e.nativeEvent.layout.width);
 
   const speak = (text: string) => {
     Speech.stop();
     Speech.speak(text, { language: lang === 'ar' ? 'ar-SA' : 'en-US', pitch: 1.1, rate: 0.9 });
   };
 
-  useEffect(() => {
-    if (finished) speak(t.wellDone);
-  }, [finished]);
+  const pointToPx = (p: { left: number; top: number }) => ({
+    x: (p.left / 100) * wrapWidth,
+    y: (p.top / 100) * wrapHeight,
+  });
 
   const addCommand = (dir: Dir) => {
-    if (running || commands.length >= MAX_COMMANDS) return;
-    setCommands((prev) => [...prev, dir]);
+    if (running || sequence.length >= mission.slotCount) return;
+    setSequence((prev) => [...prev, dir]);
   };
 
-  const clearCommands = () => {
+  const clearSequence = () => {
     if (running) return;
-    setCommands([]);
-    setRobotPos(round.start);
+    setSequence([]);
     setFeedback(null);
+    spriteVisible.current = false;
+    forceRender((n) => n + 1);
   };
 
-  const run = () => {
-    if (running || commands.length === 0) return;
-    setRunning(true);
-    setFeedback(null);
-    const token = ++runToken.current;
-    let pos = { ...round.start };
-    let step = 0;
-    let failed = false;
-
-    const stepFn = () => {
-      if (runToken.current !== token) return;
-      if (step >= commands.length) {
-        setRunning(false);
-        if (!failed && pos.row === round.goal.row && pos.col === round.goal.col) {
-          setFeedback('success');
-          speak(lang === 'ar' ? 'أحسنت!' : 'Great!');
-          setTimeout(() => setRoundIndex((r) => r + 1), 900);
-        } else {
-          setFeedback('fail');
-          speak(t.timeUp);
-          setTimeout(() => {
-            setRobotPos(round.start);
-            setCommands([]);
-            setFeedback(null);
-          }, 900);
-        }
-        return;
-      }
-      const dir = commands[step];
-      const delta = DELTA[dir];
-      const next = { row: pos.row + delta.row, col: pos.col + delta.col };
-      const outOfBounds = next.row < 0 || next.row >= GRID_SIZE || next.col < 0 || next.col >= GRID_SIZE;
-      const hitObstacle = !outOfBounds && round.obstacles.has(key(next));
-      if (outOfBounds || hitObstacle) {
-        failed = true;
-        setRunning(false);
-        setFeedback('fail');
-        speak(t.timeUp);
-        setTimeout(() => {
-          setRobotPos(round.start);
-          setCommands([]);
-          setFeedback(null);
-        }, 900);
-        return;
-      }
-      pos = next;
-      setRobotPos(pos);
-      step++;
-      setTimeout(stepFn, 450);
-    };
-    stepFn();
+  const goBack = () => {
+    if (missionIndex === 0) {
+      navigation.goBack();
+      return;
+    }
+    setMissionIndex((i) => i - 1);
+    setSequence([]);
+    spriteVisible.current = false;
   };
 
   const restart = () => {
-    setRoundIndex(0);
-    setRound(buildRound(0));
+    setMissionIndex(0);
+    setSequence([]);
+    spriteVisible.current = false;
   };
+
+  const play = () => {
+    if (running || sequence.length === 0 || !wrapWidth) return;
+    const isCorrect =
+      sequence.length === mission.solution.length && sequence.every((d, i) => d === mission.solution[i]);
+
+    setRunning(true);
+    setFeedback(null);
+    const start = pointToPx(mission.startPoint);
+    spritePos.setValue({ x: start.x, y: start.y });
+    spriteVisible.current = true;
+    forceRender((n) => n + 1);
+
+    if (isCorrect) {
+      const goal = pointToPx(mission.goalPoint);
+      speak(lang === 'ar' ? 'يلا نتحرك!' : "Let's go!");
+      Animated.timing(spritePos, {
+        toValue: { x: goal.x, y: goal.y },
+        duration: 1400,
+        useNativeDriver: false,
+      }).start(() => {
+        speak(lang === 'ar' ? 'وصلنا للهدف! أحسنت!' : 'Reached the goal! Well done!');
+        setTimeout(() => {
+          setRunning(false);
+          setSequence([]);
+          spriteVisible.current = false;
+          setMissionIndex((i) => i + 1);
+        }, 900);
+      });
+    } else {
+      speak(t.wrongTryAgain);
+      setTimeout(() => {
+        setRunning(false);
+        setFeedback('fail');
+        setSequence([]);
+        spriteVisible.current = false;
+        forceRender((n) => n + 1);
+        setTimeout(() => setFeedback(null), 700);
+      }, 500);
+    }
+  };
+
+  const slotCells = mission
+    ? Array.from({ length: mission.slotCount }, (_, i) => {
+        const cellWidth = mission.slotsZone.width / mission.slotCount;
+        return { left: mission.slotsZone.left + cellWidth * i, top: mission.slotsZone.top, width: cellWidth, height: mission.slotsZone.height };
+      })
+    : [];
 
   return (
     <SafeAreaView style={styles.container}>
-      <WorldHeader title={lang === 'ar' ? CARD.titleAr : CARD.titleEn} image={CARD.worldImage} />
       {finished ? (
         <View style={styles.center}>
           <Text style={styles.wellDone}>{t.wellDone}</Text>
@@ -164,138 +133,81 @@ export default function RobotScreen() {
           </Pressable>
         </View>
       ) : (
-        <View style={styles.center}>
-          <Text style={styles.progress}>{roundIndex + 1} / {TOTAL_ROUNDS}</Text>
-          <View style={[styles.grid, { width: CELL * GRID_SIZE, height: CELL * GRID_SIZE }]}>
-            {Array.from({ length: GRID_SIZE }).map((_, r) => (
-              <View key={r} style={{ flexDirection: 'row' }}>
-                {Array.from({ length: GRID_SIZE }).map((__, c) => {
-                  const isRobot = robotPos.row === r && robotPos.col === c;
-                  const isGoal = round.goal.row === r && round.goal.col === c;
-                  const isObstacle = round.obstacles.has(key({ row: r, col: c }));
-                  return (
-                    <View
-                      key={c}
-                      style={[
-                        styles.cell,
-                        { width: CELL, height: CELL },
-                        isObstacle ? styles.obstacleCell : null,
-                      ]}
-                    >
-                      {isObstacle ? <Text style={styles.obstacleIcon}>🌵</Text> : null}
-                      {isGoal ? <Text style={styles.goalStar}>💎</Text> : null}
-                      {isRobot ? <Text style={styles.robot}>🤖</Text> : null}
-                    </View>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View
+            style={[styles.imageWrap, { width: '100%', height: wrapHeight || 1 }]}
+            onLayout={onWrapLayout}
+          >
+            {wrapWidth ? (
+              <>
+                <Image source={mission.image} style={styles.missionImage} resizeMode="cover" />
 
-          <View style={styles.commandsRow}>
-            {Array.from({ length: MAX_COMMANDS }).map((_, i) => (
-              <View key={i} style={styles.commandSlot}>
-                <Text style={styles.commandText}>{commands[i] ? ARROWS[commands[i]] : ''}</Text>
-              </View>
-            ))}
-          </View>
+                <Pressable style={[styles.hitZone, zoneStyle(mission.forwardZone)]} onPress={() => addCommand('forward')} />
+                <Pressable style={[styles.hitZone, zoneStyle(mission.leftZone)]} onPress={() => addCommand('left')} />
+                <Pressable style={[styles.hitZone, zoneStyle(mission.rightZone)]} onPress={() => addCommand('right')} />
+                <Pressable style={[styles.hitZone, zoneStyle(mission.clearZone)]} onPress={clearSequence} />
+                <Pressable style={[styles.hitZone, zoneStyle(mission.playZone)]} onPress={play} />
+                <Pressable style={[styles.hitZone, zoneStyle(mission.backZone)]} onPress={goBack} />
 
-          {feedback === 'fail' ? <Text style={styles.feedbackText}>{t.timeUp}</Text> : null}
+                {slotCells.map((cell, i) => (
+                  <View key={i} pointerEvents="none" style={[styles.slotCell, zoneStyle(cell)]}>
+                    {sequence[i] ? <Text style={styles.slotIcon}>{DIR_ICON[sequence[i]]}</Text> : null}
+                  </View>
+                ))}
 
-          <View style={styles.arrowPad}>
-            <Pressable style={styles.arrowBtn} onPress={() => addCommand('up')}>
-              <Text style={styles.arrowText}>⬆️</Text>
-            </Pressable>
-            <View style={{ flexDirection: 'row' }}>
-              <Pressable style={styles.arrowBtn} onPress={() => addCommand('left')}>
-                <Text style={styles.arrowText}>⬅️</Text>
-              </Pressable>
-              <Pressable style={styles.arrowBtn} onPress={() => addCommand('right')}>
-                <Text style={styles.arrowText}>➡️</Text>
-              </Pressable>
-            </View>
-            <Pressable style={styles.arrowBtn} onPress={() => addCommand('down')}>
-              <Text style={styles.arrowText}>⬇️</Text>
-            </Pressable>
-          </View>
+                {spriteVisible.current ? (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[styles.sprite, { transform: spritePos.getTranslateTransform() }]}
+                  >
+                    <Text style={styles.spriteEmoji}>🤖</Text>
+                  </Animated.View>
+                ) : null}
 
-          <View style={styles.actionsRow}>
-            <Pressable style={styles.clearBtn} onPress={clearCommands}>
-              <Text style={styles.actionText}>{t.clear}</Text>
-            </Pressable>
-            <Pressable style={styles.runBtn} onPress={run}>
-              <Text style={styles.actionText}>▶ {t.startRobot}</Text>
-            </Pressable>
+                {feedback === 'fail' ? (
+                  <View pointerEvents="none" style={styles.failBanner}>
+                    <Text style={styles.failText}>{t.timeUp}</Text>
+                  </View>
+                ) : null}
+              </>
+            ) : null}
           </View>
-        </View>
+        </ScrollView>
       )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.bgSky },
+  container: { flex: 1, backgroundColor: '#3A282D' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  progress: { fontSize: 16, fontWeight: '700', color: palette.dark, marginTop: 8, marginBottom: 8 },
-  grid: {
-    borderWidth: 3,
-    borderColor: palette.dark,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  cell: {
-    borderWidth: 1,
-    borderColor: '#DDD',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.white,
-  },
-  goalStar: { fontSize: 26, position: 'absolute' },
-  robot: { fontSize: 28 },
-  obstacleCell: { backgroundColor: '#F0E4D0' },
-  obstacleIcon: { fontSize: 22, position: 'absolute' },
-  commandsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginVertical: 8, width: 260 },
-  commandSlot: {
-    width: 26,
-    height: 26,
-    margin: 2,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: palette.purple,
+  scroll: { flexGrow: 1, justifyContent: 'center' },
+  imageWrap: { position: 'relative', overflow: 'hidden' },
+  missionImage: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+  hitZone: { position: 'absolute' },
+  slotCell: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  slotIcon: { fontSize: 20 },
+  sprite: {
+    position: 'absolute',
+    width: 46,
+    height: 46,
+    marginLeft: -23,
+    marginTop: -23,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  commandText: { fontSize: 13 },
-  feedbackText: { fontSize: 16, fontWeight: '800', color: palette.red, marginBottom: 6 },
-  arrowPad: { alignItems: 'center', marginVertical: 6 },
-  arrowBtn: {
-    width: 52,
-    height: 52,
+  spriteEmoji: { fontSize: 36 },
+  failBanner: {
+    position: 'absolute',
+    top: '58%',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,94,94,0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 14,
-    backgroundColor: palette.blue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: 3,
   },
-  arrowText: { fontSize: 24 },
-  actionsRow: { flexDirection: 'row', marginTop: 8 },
-  clearBtn: {
-    backgroundColor: palette.red,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 18,
-    marginHorizontal: 8,
-  },
-  runBtn: {
-    backgroundColor: palette.green,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 18,
-    marginHorizontal: 8,
-  },
-  actionText: { color: palette.white, fontWeight: '800', fontSize: 15 },
-  wellDone: { fontSize: 32, fontWeight: '900', color: palette.dark, marginBottom: 20 },
+  failText: { color: palette.white, fontWeight: '900', fontSize: 16 },
+  wellDone: { fontSize: 32, fontWeight: '900', color: palette.white, marginBottom: 20 },
   playAgainBtn: { backgroundColor: palette.green, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 24 },
   playAgainText: { color: palette.white, fontSize: 18, fontWeight: '800' },
 });
