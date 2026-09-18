@@ -31,7 +31,7 @@ export default function WorldHeader({
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: '100%', height: 130, justifyContent: 'flex-end' },
+  wrap: { width: '100%', height: 130, justifyContent: 'flex-end', overflow: 'hidden' },
   bg: { ...StyleSheet.absoluteFill },
   overlay: {
     ...StyleSheet.absoluteFill,

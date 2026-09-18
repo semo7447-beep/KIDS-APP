@@ -25,6 +25,10 @@ type Strings = {
   workTogether: string;
   yourTurn: string;
   buildScene: string;
+  confirm: string;
+  previous: string;
+  missionLabel: string;
+  wrongTryAgain: string;
 };
 
 const AR: Strings = {
@@ -50,6 +54,10 @@ const AR: Strings = {
   workTogether: 'اشتغلوا مع بعض',
   yourTurn: 'دورك',
   buildScene: 'اسحب العناصر وابنِ عالمك',
+  confirm: 'تأكيد',
+  previous: 'السابق',
+  missionLabel: 'المهمة',
+  wrongTryAgain: 'مش هي! حاول تاني',
 };
 
 const EN: Strings = {
@@ -75,6 +83,10 @@ const EN: Strings = {
   workTogether: 'Work together',
   yourTurn: 'Your turn',
   buildScene: 'Drag items to build your world',
+  confirm: 'Confirm',
+  previous: 'Previous',
+  missionLabel: 'Mission',
+  wrongTryAgain: "That's not it! Try again",
 };
 
 const STRINGS: Record<Lang, Strings> = { ar: AR, en: EN };
