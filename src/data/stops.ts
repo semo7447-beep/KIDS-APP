@@ -17,4 +17,5 @@ export const STOPS: Stop[] = [
   { id: 'pattern', screen: 'Pattern', emoji: '🧩', color: palette.green, labelAr: 'أكمل النمط', labelEn: 'Pattern' },
   { id: 'oddoneout', screen: 'OddOneOut', emoji: '🔍', color: palette.red, labelAr: 'ابحث عن المختلف', labelEn: 'Odd One Out' },
   { id: 'draw', screen: 'Draw', emoji: '🖍️', color: palette.purple, labelAr: 'ارسم', labelEn: 'Draw' },
+  { id: 'animalworld', screen: 'AnimalWorld', emoji: '🌍', color: palette.blue, labelAr: 'عالم الحيوانات', labelEn: 'Animal World' },
 ];

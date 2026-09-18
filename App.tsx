@@ -14,6 +14,7 @@ import MemoryGameScreen from './src/screens/MemoryGameScreen';
 import PatternGameScreen from './src/screens/PatternGameScreen';
 import OddOneOutScreen from './src/screens/OddOneOutScreen';
 import DrawScreen from './src/screens/DrawScreen';
+import AnimalWorldScreen from './src/screens/AnimalWorldScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -33,6 +34,7 @@ export default function App() {
                 <Stack.Screen name="Pattern" component={PatternGameScreen} />
                 <Stack.Screen name="OddOneOut" component={OddOneOutScreen} />
                 <Stack.Screen name="Draw" component={DrawScreen} />
+                <Stack.Screen name="AnimalWorld" component={AnimalWorldScreen} />
               </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="auto" />

@@ -16,6 +16,7 @@ type Strings = {
   pattern: string;
   oddOneOut: string;
   findDifferent: string;
+  animalWorld: string;
   wellDone: string;
   playAgain: string;
   tapToHear: string;
@@ -40,6 +41,7 @@ const AR: Strings = {
   pattern: 'أكمل النمط',
   oddOneOut: 'ابحث عن المختلف',
   findDifferent: 'اضغط على المختلف',
+  animalWorld: 'عالم الحيوانات',
   wellDone: 'أحسنت! 🎉',
   playAgain: 'العب مرة أخرى',
   tapToHear: 'اضغط لتسمع',
@@ -64,6 +66,7 @@ const EN: Strings = {
   pattern: 'Pattern',
   oddOneOut: 'Odd One Out',
   findDifferent: 'Tap the different one',
+  animalWorld: 'Animal World',
   wellDone: 'Well done! 🎉',
   playAgain: 'Play again',
   tapToHear: 'Tap to hear',
