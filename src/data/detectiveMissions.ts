@@ -1,21 +1,6 @@
-export type Zone = { left: number; top: number; width: number; height: number };
+import { Mission } from '../types/mission';
 
-export type MissionOptionZone = Zone & {
-  id: string;
-  correct: boolean;
-};
-
-export type DetectiveMission = {
-  id: string;
-  number: number;
-  image: ReturnType<typeof require>;
-  imageRatio: number;
-  options: MissionOptionZone[];
-  confirmZone: Zone;
-  previousZone: Zone;
-};
-
-export const DETECTIVE_MISSIONS: DetectiveMission[] = [
+export const DETECTIVE_MISSIONS: Mission[] = [
   {
     id: 'mission1',
     number: 1,
