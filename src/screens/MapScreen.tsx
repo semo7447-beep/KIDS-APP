@@ -1,11 +1,13 @@
 import React, { useRef } from 'react';
-import { Animated, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Svg, { Polyline } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { useProgress } from '../context/ProgressContext';
+import { useCharacter } from '../context/CharacterContext';
 import { palette } from '../theme/colors';
 import { STOPS } from '../data/stops';
+import { CHARACTERS } from '../data/characters';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STOP_SIZE = 96;
@@ -76,6 +78,8 @@ function StopMarker({
 export default function MapScreen({ navigation }: NativeStackScreenProps<any>) {
   const { t, lang, isRTL, toggleLang } = useLanguage();
   const { visited } = useProgress();
+  const { selectedId } = useCharacter();
+  const selectedCharacter = CHARACTERS.find((c) => c.id === selectedId) ?? CHARACTERS[0];
 
   const points = STOPS.map((_, i) => {
     const c = getStopCenter(i);
@@ -88,9 +92,14 @@ export default function MapScreen({ navigation }: NativeStackScreenProps<any>) {
     <View style={styles.container}>
       <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <Text style={styles.title}>{t.appName} 🌈</Text>
-        <Pressable style={styles.langBtn} onPress={toggleLang}>
-          <Text style={styles.langBtnText}>{t.langToggle}</Text>
-        </Pressable>
+        <View style={[styles.headerRight, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <Pressable onPress={() => navigation.navigate('CharacterSelect')}>
+            <Image source={selectedCharacter.image} style={styles.avatarBtn} resizeMode="cover" />
+          </Pressable>
+          <Pressable style={styles.langBtn} onPress={toggleLang}>
+            <Text style={styles.langBtnText}>{t.langToggle}</Text>
+          </Pressable>
+        </View>
       </View>
       <ScrollView contentContainerStyle={{ height: contentHeight }}>
         <Svg width={SCREEN_WIDTH} height={contentHeight} style={StyleSheet.absoluteFill}>
@@ -130,6 +139,15 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   title: { fontSize: 24, fontWeight: '900', color: palette.dark },
+  headerRight: { alignItems: 'center' },
+  avatarBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: palette.white,
+    marginHorizontal: 8,
+  },
   langBtn: {
     backgroundColor: palette.purple,
     paddingHorizontal: 14,

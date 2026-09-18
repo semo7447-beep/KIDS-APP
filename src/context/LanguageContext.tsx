@@ -33,6 +33,7 @@ type Strings = {
   goal: string;
   repeatOrder: string;
   unlocked: string;
+  chooseCharacter: string;
   wellDone: string;
   playAgain: string;
   tapToHear: string;
@@ -44,7 +45,7 @@ type Strings = {
 };
 
 const AR: Strings = {
-  appName: 'عالم الأطفال',
+  appName: 'مين البطل؟',
   home: 'الرئيسية',
   learn: 'تعلّم',
   games: 'ألعاب',
@@ -74,6 +75,7 @@ const AR: Strings = {
   goal: 'الهدف',
   repeatOrder: 'كرر نفس الترتيب',
   unlocked: 'فتحت الغرفة! 🔓',
+  chooseCharacter: 'اختر شخصيتك',
   wellDone: 'أحسنت! 🎉',
   playAgain: 'العب مرة أخرى',
   tapToHear: 'اضغط لتسمع',
@@ -85,7 +87,7 @@ const AR: Strings = {
 };
 
 const EN: Strings = {
-  appName: "Kids World",
+  appName: "Who's The Hero?",
   home: 'Home',
   learn: 'Learn',
   games: 'Games',
@@ -115,6 +117,7 @@ const EN: Strings = {
   goal: 'Goal',
   repeatOrder: 'Repeat the same order',
   unlocked: 'Room unlocked! 🔓',
+  chooseCharacter: 'Choose Your Character',
   wellDone: 'Well done! 🎉',
   playAgain: 'Play again',
   tapToHear: 'Tap to hear',

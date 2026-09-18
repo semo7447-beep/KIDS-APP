@@ -6,6 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { ProgressProvider } from './src/context/ProgressContext';
+import { CharacterProvider } from './src/context/CharacterContext';
 import MapScreen from './src/screens/MapScreen';
 import LettersScreen from './src/screens/LettersScreen';
 import NumbersScreen from './src/screens/NumbersScreen';
@@ -20,6 +21,7 @@ import PredictScreen from './src/screens/PredictScreen';
 import RobotProgramScreen from './src/screens/RobotProgramScreen';
 import SpeedChallengeScreen from './src/screens/SpeedChallengeScreen';
 import SecretRoomScreen from './src/screens/SecretRoomScreen';
+import CharacterSelectScreen from './src/screens/CharacterSelectScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,9 +31,11 @@ export default function App() {
       <SafeAreaProvider>
         <LanguageProvider>
           <ProgressProvider>
+          <CharacterProvider>
             <NavigationContainer>
               <Stack.Navigator screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="Map" component={MapScreen} />
+                <Stack.Screen name="CharacterSelect" component={CharacterSelectScreen} />
                 <Stack.Screen name="Letters" component={LettersScreen} />
                 <Stack.Screen name="Numbers" component={NumbersScreen} />
                 <Stack.Screen name="Colors" component={ColorsScreen} />
@@ -48,6 +52,7 @@ export default function App() {
               </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="auto" />
+          </CharacterProvider>
           </ProgressProvider>
         </LanguageProvider>
       </SafeAreaProvider>
