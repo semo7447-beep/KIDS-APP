@@ -13,6 +13,9 @@ type Strings = {
   numbers: string;
   colors: string;
   memoryGame: string;
+  pattern: string;
+  oddOneOut: string;
+  findDifferent: string;
   wellDone: string;
   playAgain: string;
   tapToHear: string;
@@ -34,6 +37,9 @@ const AR: Strings = {
   numbers: 'الأرقام',
   colors: 'الألوان',
   memoryGame: 'لعبة الذاكرة',
+  pattern: 'أكمل النمط',
+  oddOneOut: 'ابحث عن المختلف',
+  findDifferent: 'اضغط على المختلف',
   wellDone: 'أحسنت! 🎉',
   playAgain: 'العب مرة أخرى',
   tapToHear: 'اضغط لتسمع',
@@ -55,6 +61,9 @@ const EN: Strings = {
   numbers: 'Numbers',
   colors: 'Colors',
   memoryGame: 'Memory Game',
+  pattern: 'Pattern',
+  oddOneOut: 'Odd One Out',
+  findDifferent: 'Tap the different one',
   wellDone: 'Well done! 🎉',
   playAgain: 'Play again',
   tapToHear: 'Tap to hear',

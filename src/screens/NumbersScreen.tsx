@@ -4,39 +4,39 @@ import * as Speech from 'expo-speech';
 import { useLanguage } from '../context/LanguageContext';
 import { useProgress } from '../context/ProgressContext';
 import { palette } from '../theme/colors';
-import { ARABIC_LETTERS, ENGLISH_LETTERS, LetterItem } from '../data/content';
+import { NUMBERS } from '../data/content';
 import FlashTile from '../components/FlashTile';
 import BackBar from '../components/BackBar';
 
-const TILE_COLORS = [palette.purple, palette.blue, palette.green, palette.orange, palette.pink];
+const TILE_COLORS = [palette.blue, palette.green, palette.orange, palette.purple, palette.pink];
 
-export default function LettersScreen() {
+export default function NumbersScreen() {
   const { lang, t } = useLanguage();
   const { markVisited } = useProgress();
-  const data: LetterItem[] = lang === 'ar' ? ARABIC_LETTERS : ENGLISH_LETTERS;
   const speechLang = lang === 'ar' ? 'ar-SA' : 'en-US';
 
   useEffect(() => {
-    markVisited('letters');
+    markVisited('numbers');
   }, []);
 
-  const speak = (item: LetterItem) => {
+  const speak = (item: (typeof NUMBERS)[number]) => {
     Speech.stop();
-    Speech.speak(`${item.char} . ${item.word}`, { language: speechLang, pitch: 1.1, rate: 0.85 });
+    const word = lang === 'ar' ? item.ar : item.en;
+    Speech.speak(`${item.value} . ${word}`, { language: speechLang, pitch: 1.1, rate: 0.85 });
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <BackBar title={t.letters} />
+      <BackBar title={t.numbers} />
       <FlatList
-        data={data}
-        keyExtractor={(item) => item.char}
+        data={NUMBERS}
+        keyExtractor={(item) => String(item.value)}
         numColumns={3}
         contentContainerStyle={styles.list}
         renderItem={({ item, index }) => (
           <FlashTile
-            topText={item.char}
-            bottomText={item.word}
+            topText={String(item.value)}
+            bottomText={lang === 'ar' ? item.ar : item.en}
             emoji={item.emoji}
             backgroundColor={TILE_COLORS[index % TILE_COLORS.length]}
             onPress={() => speak(item)}

@@ -10,10 +10,3 @@ export const palette = {
   white: '#FFFFFF',
   dark: '#3A2E4D',
 };
-
-export const tabColors: Record<string, string> = {
-  Home: palette.purple,
-  Learn: palette.blue,
-  Games: palette.orange,
-  Draw: palette.pink,
-};
