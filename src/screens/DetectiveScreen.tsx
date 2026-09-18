@@ -116,7 +116,7 @@ export default function DetectiveScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.bgSky },
+  container: { flex: 1, backgroundColor: '#3A282D' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flexGrow: 1, justifyContent: 'center' },
   imageWrap: { position: 'relative', overflow: 'hidden' },
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   selectionBoxActive: { borderColor: palette.blue },
   selectionBoxWrong: { borderColor: palette.red },
-  wellDone: { fontSize: 32, fontWeight: '900', color: palette.dark, marginBottom: 20 },
+  wellDone: { fontSize: 32, fontWeight: '900', color: palette.white, marginBottom: 20 },
   playAgainBtn: { backgroundColor: palette.green, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 24 },
   playAgainText: { color: palette.white, fontSize: 18, fontWeight: '800' },
 });
