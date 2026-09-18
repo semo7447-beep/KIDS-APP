@@ -7,8 +7,8 @@ import { palette } from '../theme/colors';
 import { MEMORY_EMOJIS } from '../data/content';
 import BackBar from '../components/BackBar';
 
-const TOTAL_ROUNDS = 5;
-const GRID_SIZE = 4;
+const TOTAL_ROUNDS = 6;
+const GRID_SIZE = 6;
 
 function buildRound() {
   const shuffled = [...MEMORY_EMOJIS].sort(() => Math.random() - 0.5);
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   progress: { fontSize: 16, fontWeight: '700', color: palette.dark, marginBottom: 4 },
   instruction: { fontSize: 18, fontWeight: '800', color: palette.dark, marginBottom: 20 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', width: 220 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', width: 324 },
   tile: {
     width: 96,
     height: 96,

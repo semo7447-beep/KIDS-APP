@@ -23,7 +23,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function buildDeck(): Card[] {
-  const chosen = shuffle(MEMORY_EMOJIS).slice(0, 4);
+  const chosen = shuffle(MEMORY_EMOJIS).slice(0, 8);
   const pairs = shuffle([...chosen, ...chosen]);
   return pairs.map((emoji, id) => ({ id, emoji, matched: false }));
 }

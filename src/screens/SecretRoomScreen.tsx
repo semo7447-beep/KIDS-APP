@@ -6,9 +6,9 @@ import { useProgress } from '../context/ProgressContext';
 import { palette } from '../theme/colors';
 import BackBar from '../components/BackBar';
 
-const TOTAL_ROUNDS = 3;
-const SEQUENCE_LENGTH = 3;
-const SHOW_MS = 3000;
+const TOTAL_ROUNDS = 4;
+const SEQUENCE_LENGTH = 5;
+const SHOW_MS = 3500;
 const GEM_COLORS = [palette.red, palette.blue, palette.yellow, palette.green];
 
 function shuffle<T>(arr: T[]): T[] {

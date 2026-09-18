@@ -105,4 +105,6 @@ export const COLORS: ColorItem[] = [
   { hex: '#FFFFFF', ar: 'أبيض', en: 'White' },
 ];
 
-export const MEMORY_EMOJIS = ['🍎', '🍌', '🍇', '🍉', '🍓', '🍒', '🥝', '🍑'];
+export const MEMORY_EMOJIS = [
+  '🍎', '🍌', '🍇', '🍉', '🍓', '🍒', '🥝', '🍑', '🍍', '🥭', '🍐', '🍊', '🥥', '🫐',
+];

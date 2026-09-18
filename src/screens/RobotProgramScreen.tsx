@@ -6,10 +6,11 @@ import { useProgress } from '../context/ProgressContext';
 import { palette } from '../theme/colors';
 import BackBar from '../components/BackBar';
 
-const GRID_SIZE = 3;
-const CELL = 72;
-const TOTAL_ROUNDS = 3;
-const MAX_COMMANDS = 6;
+const GRID_SIZE = 5;
+const CELL = 58;
+const TOTAL_ROUNDS = 5;
+const MAX_COMMANDS = 12;
+const OBSTACLES_BY_ROUND = [2, 3, 4, 5, 6];
 
 type Dir = 'up' | 'down' | 'left' | 'right';
 type Pos = { row: number; col: number };
@@ -26,22 +27,35 @@ function randomPos(): Pos {
   return { row: Math.floor(Math.random() * GRID_SIZE), col: Math.floor(Math.random() * GRID_SIZE) };
 }
 
-function buildRound(): { start: Pos; goal: Pos } {
+function key(p: Pos) {
+  return `${p.row},${p.col}`;
+}
+
+function buildRound(roundIndex: number): { start: Pos; goal: Pos; obstacles: Set<string> } {
   const start = randomPos();
   let goal = randomPos();
   let guard = 0;
-  while ((goal.row === start.row && goal.col === start.col) && guard < 20) {
+  while (goal.row === start.row && goal.col === start.col && guard < 20) {
     goal = randomPos();
     guard++;
   }
-  return { start, goal };
+  const obstacleCount = OBSTACLES_BY_ROUND[Math.min(roundIndex, OBSTACLES_BY_ROUND.length - 1)];
+  const obstacles = new Set<string>();
+  guard = 0;
+  while (obstacles.size < obstacleCount && guard < 100) {
+    const p = randomPos();
+    const k = key(p);
+    if (k !== key(start) && k !== key(goal)) obstacles.add(k);
+    guard++;
+  }
+  return { start, goal, obstacles };
 }
 
 export default function RobotProgramScreen() {
   const { t, lang } = useLanguage();
   const { markVisited } = useProgress();
   const [roundIndex, setRoundIndex] = useState(0);
-  const [round, setRound] = useState(() => buildRound());
+  const [round, setRound] = useState(() => buildRound(0));
   const [robotPos, setRobotPos] = useState<Pos>(round.start);
   const [commands, setCommands] = useState<Dir[]>([]);
   const [running, setRunning] = useState(false);
@@ -58,6 +72,10 @@ export default function RobotProgramScreen() {
     setCommands([]);
     setFeedback(null);
   }, [round]);
+
+  useEffect(() => {
+    if (!finished) setRound(buildRound(roundIndex));
+  }, [roundIndex]);
 
   const speak = (text: string) => {
     Speech.stop();
@@ -111,7 +129,9 @@ export default function RobotProgramScreen() {
       const dir = commands[step];
       const delta = DELTA[dir];
       const next = { row: pos.row + delta.row, col: pos.col + delta.col };
-      if (next.row < 0 || next.row >= GRID_SIZE || next.col < 0 || next.col >= GRID_SIZE) {
+      const outOfBounds = next.row < 0 || next.row >= GRID_SIZE || next.col < 0 || next.col >= GRID_SIZE;
+      const hitObstacle = !outOfBounds && round.obstacles.has(key(next));
+      if (outOfBounds || hitObstacle) {
         failed = true;
         setRunning(false);
         setFeedback('fail');
@@ -133,7 +153,7 @@ export default function RobotProgramScreen() {
 
   const restart = () => {
     setRoundIndex(0);
-    setRound(buildRound());
+    setRound(buildRound(0));
   };
 
   return (
@@ -155,8 +175,17 @@ export default function RobotProgramScreen() {
                 {Array.from({ length: GRID_SIZE }).map((__, c) => {
                   const isRobot = robotPos.row === r && robotPos.col === c;
                   const isGoal = round.goal.row === r && round.goal.col === c;
+                  const isObstacle = round.obstacles.has(key({ row: r, col: c }));
                   return (
-                    <View key={c} style={[styles.cell, { width: CELL, height: CELL }]}>
+                    <View
+                      key={c}
+                      style={[
+                        styles.cell,
+                        { width: CELL, height: CELL },
+                        isObstacle ? styles.obstacleCell : null,
+                      ]}
+                    >
+                      {isObstacle ? <Text style={styles.obstacleIcon}>🌵</Text> : null}
                       {isGoal ? <Text style={styles.goalStar}>⭐</Text> : null}
                       {isRobot ? <Text style={styles.robot}>🤖</Text> : null}
                     </View>
@@ -225,20 +254,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: palette.white,
   },
-  goalStar: { fontSize: 32, position: 'absolute' },
-  robot: { fontSize: 34 },
-  commandsRow: { flexDirection: 'row', marginVertical: 10 },
+  goalStar: { fontSize: 26, position: 'absolute' },
+  robot: { fontSize: 28 },
+  obstacleCell: { backgroundColor: '#F0E4D0' },
+  obstacleIcon: { fontSize: 22, position: 'absolute' },
+  commandsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginVertical: 8, width: 260 },
   commandSlot: {
-    width: 32,
-    height: 32,
-    marginHorizontal: 2,
+    width: 26,
+    height: 26,
+    margin: 2,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: palette.purple,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  commandText: { fontSize: 16 },
+  commandText: { fontSize: 13 },
   feedbackText: { fontSize: 16, fontWeight: '800', color: palette.red, marginBottom: 6 },
   arrowPad: { alignItems: 'center', marginVertical: 8 },
   arrowBtn: {

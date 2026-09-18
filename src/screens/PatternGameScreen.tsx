@@ -6,27 +6,28 @@ import { useProgress } from '../context/ProgressContext';
 import { palette } from '../theme/colors';
 import BackBar from '../components/BackBar';
 
-const SHAPE_COLORS = [palette.red, palette.blue, palette.yellow, palette.green, palette.purple];
-const TOTAL_ROUNDS = 5;
-const SEQUENCE_LENGTH = 4;
+const SHAPE_COLORS = [palette.red, palette.blue, palette.yellow, palette.green, palette.purple, palette.orange];
+const TOTAL_ROUNDS = 6;
+const SEQUENCE_LENGTH = 6;
 
-function buildRound() {
-  const [colorA, colorB] = shuffleTwo(SHAPE_COLORS);
-  const sequence = Array.from({ length: SEQUENCE_LENGTH }, (_, i) => (i % 2 === 0 ? colorA : colorB));
-  const answer = SEQUENCE_LENGTH % 2 === 0 ? colorA : colorB;
-  const wrongOptions = SHAPE_COLORS.filter((c) => c !== answer);
-  const distractor = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
-  const options = Math.random() > 0.5 ? [answer, distractor] : [distractor, answer];
-  return { sequence, answer, options };
-}
-
-function shuffleTwo(colors: string[]): [string, string] {
-  const copy = [...colors];
+function shuffle<T>(arr: T[]): T[] {
+  const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-  return [copy[0], copy[1]];
+  return copy;
+}
+
+function buildRound() {
+  const groupSize = Math.random() > 0.5 ? 3 : 2;
+  const cycle = shuffle(SHAPE_COLORS).slice(0, groupSize);
+  const sequence = Array.from({ length: SEQUENCE_LENGTH }, (_, i) => cycle[i % cycle.length]);
+  const answer = cycle[SEQUENCE_LENGTH % cycle.length];
+  const wrongPool = SHAPE_COLORS.filter((c) => !cycle.includes(c));
+  const distractors = shuffle(wrongPool).slice(0, 2);
+  const options = shuffle([answer, ...distractors]);
+  return { sequence, answer, options };
 }
 
 export default function PatternGameScreen() {
@@ -116,8 +117,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.bgSky },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   progress: { fontSize: 16, fontWeight: '700', color: palette.dark, marginBottom: 16 },
-  sequenceRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 40 },
-  shape: { width: 50, height: 50, borderRadius: 12, marginHorizontal: 6 },
+  sequenceRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 40, flexWrap: 'wrap', justifyContent: 'center', width: 320 },
+  shape: { width: 36, height: 36, borderRadius: 10, marginHorizontal: 4, marginVertical: 4 },
   questionShape: {
     backgroundColor: palette.white,
     borderWidth: 3,
@@ -128,10 +129,10 @@ const styles = StyleSheet.create({
   questionMark: { fontSize: 24, fontWeight: '900', color: palette.dark },
   optionsRow: { flexDirection: 'row' },
   optionShape: {
-    width: 90,
-    height: 90,
-    borderRadius: 20,
-    marginHorizontal: 16,
+    width: 82,
+    height: 82,
+    borderRadius: 18,
+    marginHorizontal: 10,
     borderWidth: 4,
     borderColor: palette.white,
   },

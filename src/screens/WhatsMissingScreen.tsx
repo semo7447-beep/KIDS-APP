@@ -7,9 +7,9 @@ import { palette } from '../theme/colors';
 import { MEMORY_EMOJIS } from '../data/content';
 import BackBar from '../components/BackBar';
 
-const TOTAL_ROUNDS = 5;
-const SET_SIZE = 4;
-const SHOW_MS = 2500;
+const TOTAL_ROUNDS = 6;
+const SET_SIZE = 6;
+const SHOW_MS = 2000;
 
 function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr];
@@ -25,7 +25,7 @@ function buildRound() {
   const items = pool.slice(0, SET_SIZE);
   const missing = items[Math.floor(Math.random() * items.length)];
   const remaining = items.filter((e) => e !== missing);
-  const distractors = pool.slice(SET_SIZE, SET_SIZE + 2);
+  const distractors = pool.slice(SET_SIZE, SET_SIZE + 3);
   const options = shuffle([missing, ...distractors]);
   return { items, missing, remaining, options };
 }

@@ -7,9 +7,9 @@ import { palette } from '../theme/colors';
 import { MEMORY_EMOJIS } from '../data/content';
 import BackBar from '../components/BackBar';
 
-const TOTAL_ROUNDS = 5;
-const OPTIONS_COUNT = 5;
-const TIME_MS = 8000;
+const TOTAL_ROUNDS = 6;
+const OPTIONS_COUNT = 7;
+const TIME_MS = 5000;
 const TICK_MS = 100;
 
 function shuffle<T>(arr: T[]): T[] {
