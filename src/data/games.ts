@@ -1,0 +1,182 @@
+export type GameCard = {
+  id: string;
+  number: number;
+  screen: string;
+  emoji: string;
+  color: string;
+  titleAr: string;
+  titleEn: string;
+  descAr: string;
+  descEn: string;
+  skillsAr: string[];
+  skillsEn: string[];
+  cardImage: ReturnType<typeof require>;
+  worldImage: ReturnType<typeof require>;
+};
+
+const CARD_IMAGES: Record<string, ReturnType<typeof require>> = {
+  detective: require('../../assets/cards/detective.jpg'),
+  predict: require('../../assets/cards/predict.jpg'),
+  buildworld: require('../../assets/cards/buildworld.jpg'),
+  robot: require('../../assets/cards/robot.jpg'),
+  secretroom: require('../../assets/cards/secretroom.jpg'),
+  rescue: require('../../assets/cards/rescue.jpg'),
+  whatsmissing: require('../../assets/cards/whatsmissing.jpg'),
+  speed: require('../../assets/cards/speed.jpg'),
+  drawguess: require('../../assets/cards/drawguess.jpg'),
+  coop: require('../../assets/cards/coop.jpg'),
+};
+
+const WORLD_IMAGES: Record<string, ReturnType<typeof require>> = {
+  detective: require('../../assets/worlds/detective.jpg'),
+  predict: require('../../assets/worlds/predict.jpg'),
+  buildworld: require('../../assets/worlds/buildworld.jpg'),
+  robot: require('../../assets/worlds/robot.jpg'),
+  secretroom: require('../../assets/worlds/secretroom.jpg'),
+  rescue: require('../../assets/worlds/rescue.jpg'),
+  whatsmissing: require('../../assets/worlds/whatsmissing.jpg'),
+  speed: require('../../assets/worlds/speed.jpg'),
+  drawguess: require('../../assets/worlds/drawguess.jpg'),
+  coop: require('../../assets/worlds/coop.jpg'),
+};
+
+type GameCardData = Omit<GameCard, 'cardImage' | 'worldImage'>;
+
+const GAME_CARDS_DATA: GameCardData[] = [
+  {
+    id: 'detective',
+    number: 1,
+    screen: 'Detective',
+    emoji: '🔍',
+    color: '#D4A017',
+    titleAr: 'المحقق الصغير',
+    titleEn: 'Little Detective',
+    descAr: 'اجمع الأدلة وحل القضية!',
+    descEn: 'Gather clues and solve the case!',
+    skillsAr: ['التحليل', 'الملاحظة', 'حل المشكلات'],
+    skillsEn: ['Analysis', 'Observation', 'Problem solving'],
+  },
+  {
+    id: 'predict',
+    number: 2,
+    screen: 'Predict',
+    emoji: '💡',
+    color: '#5B4FCF',
+    titleAr: 'ماذا سيحدث؟',
+    titleEn: 'What Will Happen?',
+    descAr: 'فكّر وتوقّع!',
+    descEn: 'Think and predict!',
+    skillsAr: ['التفكير المنطقي', 'التوقع', 'الاستنتاج'],
+    skillsEn: ['Logical thinking', 'Prediction', 'Deduction'],
+  },
+  {
+    id: 'buildworld',
+    number: 3,
+    screen: 'BuildWorld',
+    emoji: '🏠',
+    color: '#2E9E5B',
+    titleAr: 'ابن عالمك',
+    titleEn: 'Build Your World',
+    descAr: 'صمم عالمك الخاص!',
+    descEn: 'Design your own world!',
+    skillsAr: ['الإبداع', 'التخطيط', 'التفكير المكاني'],
+    skillsEn: ['Creativity', 'Planning', 'Spatial thinking'],
+  },
+  {
+    id: 'robot',
+    number: 4,
+    screen: 'Robot',
+    emoji: '🤖',
+    color: '#2E86DE',
+    titleAr: 'برمج الروبوت',
+    titleEn: 'Program the Robot',
+    descAr: 'أعط روبو سلسلة أوامر ليصل للهدف!',
+    descEn: 'Give Robo commands to reach the goal!',
+    skillsAr: ['المنطق', 'التسلسل', 'البرمجة'],
+    skillsEn: ['Logic', 'Sequencing', 'Programming'],
+  },
+  {
+    id: 'secretroom',
+    number: 5,
+    screen: 'SecretRoom',
+    emoji: '🔒',
+    color: '#6C3FA0',
+    titleAr: 'غرفة الأسرار',
+    titleEn: 'Secret Room',
+    descAr: 'حل الألغاز وافتح الباب!',
+    descEn: 'Solve puzzles and open the door!',
+    skillsAr: ['التركيز', 'الذاكرة', 'حل المشكلات'],
+    skillsEn: ['Focus', 'Memory', 'Problem solving'],
+  },
+  {
+    id: 'rescue',
+    number: 6,
+    screen: 'Rescue',
+    emoji: '🐾',
+    color: '#E07A2B',
+    titleAr: 'أنقذ الحيوان',
+    titleEn: 'Rescue the Animal',
+    descAr: 'مغامرة القرارات!',
+    descEn: 'A decision-making adventure!',
+    skillsAr: ['القرارات', 'التفكير الاستراتيجي', 'التعاطف'],
+    skillsEn: ['Decisions', 'Strategic thinking', 'Empathy'],
+  },
+  {
+    id: 'whatsmissing',
+    number: 7,
+    screen: 'WhatsMissing',
+    emoji: '👀',
+    color: '#E0507A',
+    titleAr: 'اختفى شيء',
+    titleEn: "What's Missing",
+    descAr: 'لاحظ واعرف الناقص!',
+    descEn: 'Observe and find what disappeared!',
+    skillsAr: ['الذاكرة', 'الملاحظة', 'الانتباه'],
+    skillsEn: ['Memory', 'Observation', 'Attention'],
+  },
+  {
+    id: 'speed',
+    number: 8,
+    screen: 'Speed',
+    emoji: '⚡',
+    color: '#E04B4B',
+    titleAr: 'تحدي 10 ثوانٍ',
+    titleEn: '10 Second Challenge',
+    descAr: 'سرعة وتركيز!',
+    descEn: 'Speed and focus!',
+    skillsAr: ['السرعة', 'التركيز', 'الانتباه'],
+    skillsEn: ['Speed', 'Focus', 'Attention'],
+  },
+  {
+    id: 'drawguess',
+    number: 9,
+    screen: 'Draw',
+    emoji: '🎨',
+    color: '#D65FA6',
+    titleAr: 'ارسم وخمّن',
+    titleEn: 'Draw and Guess',
+    descAr: 'أطلق إبداعك!',
+    descEn: 'Unleash your creativity!',
+    skillsAr: ['الإبداع', 'التعبير', 'التخيل'],
+    skillsEn: ['Creativity', 'Expression', 'Imagination'],
+  },
+  {
+    id: 'coop',
+    number: 10,
+    screen: 'Coop',
+    emoji: '🤝',
+    color: '#3FA75A',
+    titleAr: 'تحدي التعاون',
+    titleEn: 'Cooperation Challenge',
+    descAr: 'اشتغلوا مع بعض!',
+    descEn: 'Work together!',
+    skillsAr: ['التعاون', 'التواصل', 'العمل الجماعي'],
+    skillsEn: ['Cooperation', 'Communication', 'Teamwork'],
+  },
+];
+
+export const GAME_CARDS: GameCard[] = GAME_CARDS_DATA.map((card) => ({
+  ...card,
+  cardImage: CARD_IMAGES[card.id],
+  worldImage: WORLD_IMAGES[card.id],
+}));
