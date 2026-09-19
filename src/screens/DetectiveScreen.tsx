@@ -114,6 +114,7 @@ export default function DetectiveScreen() {
         renderImageStage()
       ) : (
         <HiddenObjectBoard
+          key={DETECTIVE_HIDDEN_MISSIONS[stage - 1].id}
           mission={DETECTIVE_HIDDEN_MISSIONS[stage - 1]}
           onSolved={() => setStage((s) => s + 1)}
           onPrevious={() => setStage((s) => Math.max(0, s - 1))}
