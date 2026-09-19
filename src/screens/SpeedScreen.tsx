@@ -6,6 +6,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
 import { SPEED_MISSIONS } from '../data/speedMissions';
 import { Zone } from '../types/mission';
+import { GAME_CARDS } from '../data/games';
+import CharacterBubble from '../components/CharacterBubble';
 
 function zoneStyle(zone: Zone) {
   return {
@@ -17,6 +19,7 @@ function zoneStyle(zone: Zone) {
 }
 
 type Phase = 'idle' | 'running' | 'success' | 'fail';
+const world = GAME_CARDS.find((c) => c.id === 'speed');
 
 export default function SpeedScreen() {
   const { t, lang } = useLanguage();
@@ -30,7 +33,13 @@ export default function SpeedScreen() {
 
   const mission = SPEED_MISSIONS[missionIndex];
   const finished = missionIndex >= SPEED_MISSIONS.length;
-  const targetCount = mission ? mission.items.filter((i) => i.isTarget).length : 0;
+  const template = mission?.template;
+  const templateItems = template?.items ?? [];
+  const targetCount = template
+    ? templateItems.filter((i) => i.isTarget).length
+    : mission
+    ? mission.items!.filter((i) => i.isTarget).length
+    : 0;
 
   const onWrapLayout = (e: LayoutChangeEvent) => setWrapWidth(e.nativeEvent.layout.width);
 
@@ -66,10 +75,10 @@ export default function SpeedScreen() {
     }, 1000);
   };
 
-  const onTapItem = (item: (typeof mission.items)[number]) => {
-    if (phase !== 'running' || !item.isTarget || selected.has(item.id)) return;
+  const onTapItemId = (id: string, isTarget: boolean) => {
+    if (phase !== 'running' || !isTarget || selected.has(id)) return;
     const next = new Set(selected);
-    next.add(item.id);
+    next.add(id);
     setSelected(next);
     if (next.size === targetCount) {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -94,8 +103,109 @@ export default function SpeedScreen() {
     setSelected(new Set());
   };
 
+  const renderImageMode = () => (
+    <ScrollView contentContainerStyle={styles.scroll}>
+      <View
+        style={[styles.imageWrap, { width: '100%', height: wrapWidth ? wrapWidth / (mission.imageRatio ?? 1) : 1 }]}
+        onLayout={onWrapLayout}
+      >
+        {wrapWidth ? (
+          <>
+            <Image source={mission.image} style={styles.missionImage} resizeMode="cover" />
+
+            <Pressable style={styles.backBtn} onPress={goBack}>
+              <Text style={styles.backIcon}>{lang === 'ar' ? '▶' : '◀'}</Text>
+            </Pressable>
+
+            {mission.items!.map((item) => (
+              <Pressable key={item.id} style={[styles.hitZone, zoneStyle(item)]} onPress={() => onTapItemId(item.id, item.isTarget)} />
+            ))}
+
+            {mission.items!.map((item) =>
+              selected.has(item.id) ? (
+                <View key={item.id} pointerEvents="none" style={[styles.selectionBox, zoneStyle(item)]}>
+                  <Text style={styles.checkmark}>✓</Text>
+                </View>
+              ) : null
+            )}
+
+            {phase === 'running' ? (
+              <View pointerEvents="none" style={styles.timerBadge}>
+                <Text style={styles.timerText}>{timeLeft}</Text>
+              </View>
+            ) : null}
+
+            {phase === 'fail' ? (
+              <View pointerEvents="none" style={styles.failBanner}>
+                <Text style={styles.failText}>{t.timeUp}</Text>
+              </View>
+            ) : null}
+
+            {phase === 'idle' || phase === 'fail' ? (
+              <Pressable style={[styles.hitZone, zoneStyle(mission.startZone!)]} onPress={startRun} />
+            ) : null}
+          </>
+        ) : null}
+      </View>
+    </ScrollView>
+  );
+
+  const renderTemplateMode = () => {
+    if (!template) return null;
+    const prompt = lang === 'ar' ? template.promptAr : template.promptEn;
+    return (
+      <ScrollView contentContainerStyle={styles.templateScroll}>
+        <View style={styles.templateTopRow}>
+          <Pressable style={styles.templateBackBtn} onPress={goBack}>
+            <Text style={styles.backIcon}>{lang === 'ar' ? '▶' : '◀'}</Text>
+          </Pressable>
+          <Text style={styles.templateMissionLabel}>
+            {t.missionLabel} {mission.number}
+          </Text>
+          {phase === 'running' ? (
+            <View style={styles.timerBadgeTemplate}>
+              <Text style={styles.timerText}>{timeLeft}</Text>
+            </View>
+          ) : (
+            <View style={{ width: 54 }} />
+          )}
+        </View>
+
+        <CharacterBubble characterId={template.characterId} text={prompt} />
+
+        <View style={styles.templateGrid}>
+          {templateItems.map((item) => {
+            const isSelected = selected.has(item.id);
+            return (
+              <Pressable
+                key={item.id}
+                style={[styles.templateItemCard, isSelected ? styles.templateItemSelected : null]}
+                onPress={() => onTapItemId(item.id, item.isTarget)}
+              >
+                <Text style={styles.templateItemEmoji}>{item.emoji}</Text>
+                {isSelected ? <Text style={styles.checkmarkBadge}>✓</Text> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {phase === 'fail' ? (
+          <View style={styles.failBannerInline}>
+            <Text style={styles.failText}>{t.timeUp}</Text>
+          </View>
+        ) : null}
+
+        {phase === 'idle' || phase === 'fail' ? (
+          <Pressable style={styles.startBtn} onPress={startRun}>
+            <Text style={styles.startBtnText}>▶ {t.startRobot}</Text>
+          </Pressable>
+        ) : null}
+      </ScrollView>
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, template ? { backgroundColor: world?.color ?? styles.container.backgroundColor } : null]}>
       {finished ? (
         <View style={styles.center}>
           <Text style={styles.wellDone}>{t.wellDone}</Text>
@@ -103,51 +213,10 @@ export default function SpeedScreen() {
             <Text style={styles.playAgainText}>{t.playAgain}</Text>
           </Pressable>
         </View>
+      ) : template ? (
+        renderTemplateMode()
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <View
-            style={[styles.imageWrap, { width: '100%', height: wrapWidth ? wrapWidth / mission.imageRatio : 1 }]}
-            onLayout={onWrapLayout}
-          >
-            {wrapWidth ? (
-              <>
-                <Image source={mission.image} style={styles.missionImage} resizeMode="cover" />
-
-                <Pressable style={styles.backBtn} onPress={goBack}>
-                  <Text style={styles.backIcon}>{lang === 'ar' ? '▶' : '◀'}</Text>
-                </Pressable>
-
-                {mission.items.map((item) => (
-                  <Pressable key={item.id} style={[styles.hitZone, zoneStyle(item)]} onPress={() => onTapItem(item)} />
-                ))}
-
-                {mission.items.map((item) =>
-                  selected.has(item.id) ? (
-                    <View key={item.id} pointerEvents="none" style={[styles.selectionBox, zoneStyle(item)]}>
-                      <Text style={styles.checkmark}>✓</Text>
-                    </View>
-                  ) : null
-                )}
-
-                {phase === 'running' ? (
-                  <View pointerEvents="none" style={styles.timerBadge}>
-                    <Text style={styles.timerText}>{timeLeft}</Text>
-                  </View>
-                ) : null}
-
-                {phase === 'fail' ? (
-                  <View pointerEvents="none" style={styles.failBanner}>
-                    <Text style={styles.failText}>{t.timeUp}</Text>
-                  </View>
-                ) : null}
-
-                {phase === 'idle' || phase === 'fail' ? (
-                  <Pressable style={[styles.hitZone, zoneStyle(mission.startZone)]} onPress={startRun} />
-                ) : null}
-              </>
-            ) : null}
-          </View>
-        </ScrollView>
+        renderImageMode()
       )}
     </SafeAreaView>
   );
@@ -217,4 +286,61 @@ const styles = StyleSheet.create({
   wellDone: { fontSize: 32, fontWeight: '900', color: palette.white, marginBottom: 20 },
   playAgainBtn: { backgroundColor: palette.green, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 24 },
   playAgainText: { color: palette.white, fontSize: 18, fontWeight: '800' },
+
+  templateScroll: { flexGrow: 1, padding: 20, paddingTop: 24 },
+  templateTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  templateBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  templateMissionLabel: { fontSize: 16, fontWeight: '900', color: palette.white },
+  timerBadgeTemplate: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,94,94,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  templateGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginTop: 12 },
+  templateItemCard: {
+    width: 90,
+    height: 90,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  templateItemSelected: { borderColor: palette.green, backgroundColor: 'rgba(63,214,141,0.35)' },
+  templateItemEmoji: { fontSize: 40 },
+  checkmarkBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: palette.green,
+    color: palette.white,
+    fontWeight: '900',
+    fontSize: 12,
+    width: 20,
+    height: 20,
+    textAlign: 'center',
+    lineHeight: 20,
+    borderRadius: 10,
+  },
+  failBannerInline: {
+    alignSelf: 'center',
+    marginTop: 16,
+    backgroundColor: 'rgba(255,94,94,0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  startBtn: { marginTop: 24, backgroundColor: palette.green, paddingVertical: 16, borderRadius: 20, alignItems: 'center' },
+  startBtnText: { color: palette.white, fontSize: 18, fontWeight: '900' },
 });

@@ -3,5 +3,5 @@ import MissionScreen from '../components/MissionScreen';
 import { BUILDWORLD_MISSIONS } from '../data/buildWorldMissions';
 
 export default function BuildWorldScreen() {
-  return <MissionScreen missions={BUILDWORLD_MISSIONS} />;
+  return <MissionScreen missions={BUILDWORLD_MISSIONS} worldId="buildworld" />;
 }
