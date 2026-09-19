@@ -1,15 +1,20 @@
 import React, { useRef, useState } from 'react';
-import { PanResponder, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Image, LayoutChangeEvent, PanResponder, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
-import { COLORS } from '../data/content';
-import { GAME_CARDS } from '../data/games';
-import WorldHeader from '../components/WorldHeader';
+import { DRAW_MISSIONS } from '../data/drawMissions';
+import { Zone } from '../types/mission';
 
-const CARD = GAME_CARDS.find((c) => c.id === 'drawguess')!;
-
-const PROMPTS = ['🐳', '🐱', '🚀', '🌸', '🏠', '🦁', '🍕', '⚽', '🌈', '🦋', '🐢', '🚗'];
+function zoneStyle(zone: Zone) {
+  return {
+    left: `${zone.left}%` as const,
+    top: `${zone.top}%` as const,
+    width: `${zone.width}%` as const,
+    height: `${zone.height}%` as const,
+  };
+}
 
 type Stroke = { color: string; points: { x: number; y: number }[] };
 
@@ -19,12 +24,19 @@ function pointsToPath(points: { x: number; y: number }[]): string {
 }
 
 export default function DrawScreen() {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
+  const navigation = useNavigation();
+  const [missionIndex, setMissionIndex] = useState(0);
+  const [wrapWidth, setWrapWidth] = useState(0);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const [color, setColor] = useState<string>(palette.purple);
-  const [prompt, setPrompt] = useState(() => PROMPTS[Math.floor(Math.random() * PROMPTS.length)]);
+  const [color, setColor] = useState('#4A6CF7');
   const currentStroke = useRef<Stroke | null>(null);
   const [, forceRender] = useState(0);
+
+  const mission = DRAW_MISSIONS[missionIndex];
+  const finished = missionIndex >= DRAW_MISSIONS.length;
+
+  const onWrapLayout = (e: LayoutChangeEvent) => setWrapWidth(e.nativeEvent.layout.width);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -43,8 +55,9 @@ export default function DrawScreen() {
         }
       },
       onPanResponderRelease: () => {
-        if (currentStroke.current && currentStroke.current.points.length > 0) {
-          setStrokes((prev) => [...prev, currentStroke.current as Stroke]);
+        const finishedStroke = currentStroke.current;
+        if (finishedStroke && finishedStroke.points.length > 0) {
+          setStrokes((prev) => [...prev, finishedStroke]);
         }
         currentStroke.current = null;
         forceRender((n) => n + 1);
@@ -52,89 +65,91 @@ export default function DrawScreen() {
     })
   ).current;
 
-  const clear = () => setStrokes([]);
-  const undo = () => setStrokes((prev) => prev.slice(0, -1));
-  const newDrawing = () => {
+  const eraseAll = () => setStrokes([]);
+
+  const goPrevious = () => {
+    if (missionIndex === 0) {
+      navigation.goBack();
+      return;
+    }
+    setMissionIndex((i) => i - 1);
     setStrokes([]);
-    setPrompt(PROMPTS[Math.floor(Math.random() * PROMPTS.length)]);
+  };
+
+  const finishMission = () => {
+    if (strokes.length === 0) return;
+    setMissionIndex((i) => i + 1);
+    setStrokes([]);
+  };
+
+  const restart = () => {
+    setMissionIndex(0);
+    setStrokes([]);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <WorldHeader title={lang === 'ar' ? CARD.titleAr : CARD.titleEn} image={CARD.worldImage} />
-      <View style={styles.promptRow}>
-        <Text style={styles.promptLabel}>{t.drawPrompt}</Text>
-        <Text style={styles.promptEmoji}>{prompt}</Text>
-      </View>
-      <View style={styles.canvasWrap} {...panResponder.panHandlers}>
-        <Svg style={StyleSheet.absoluteFill}>
-          {strokes.map((s, i) => (
-            <Path key={i} d={pointsToPath(s.points)} stroke={s.color} strokeWidth={8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          ))}
-          {currentStroke.current ? (
-            <Path
-              d={pointsToPath(currentStroke.current.points)}
-              stroke={currentStroke.current.color}
-              strokeWidth={8}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ) : null}
-        </Svg>
-      </View>
-      <View style={styles.toolbar}>
-        <View style={styles.palette}>
-          {COLORS.map((c) => (
-            <Pressable key={c.hex} onPress={() => setColor(c.hex)}>
-              <View
-                style={[styles.swatch, { backgroundColor: c.hex }, color === c.hex ? styles.swatchSelected : null]}
-              />
-            </Pressable>
-          ))}
-        </View>
-        <View style={styles.actions}>
-          <Pressable style={styles.actionBtn} onPress={undo}>
-            <Text style={styles.actionText}>{t.undo}</Text>
-          </Pressable>
-          <Pressable style={[styles.actionBtn, { backgroundColor: palette.red }]} onPress={clear}>
-            <Text style={styles.actionText}>{t.clear}</Text>
-          </Pressable>
-          <Pressable style={[styles.actionBtn, { backgroundColor: palette.orange }]} onPress={newDrawing}>
-            <Text style={styles.actionText}>{t.newDrawing}</Text>
+      {finished ? (
+        <View style={styles.center}>
+          <Text style={styles.wellDone}>{t.wellDone}</Text>
+          <Pressable style={styles.playAgainBtn} onPress={restart}>
+            <Text style={styles.playAgainText}>{t.playAgain}</Text>
           </Pressable>
         </View>
-      </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View
+            style={[styles.imageWrap, { width: '100%', height: wrapWidth ? wrapWidth / mission.imageRatio : 1 }]}
+            onLayout={onWrapLayout}
+          >
+            {wrapWidth ? (
+              <>
+                <Image source={mission.image} style={styles.missionImage} resizeMode="cover" />
+
+                <View style={[styles.canvas, zoneStyle(mission.canvasZone)]} {...panResponder.panHandlers}>
+                  <Svg style={StyleSheet.absoluteFill}>
+                    {strokes.map((s, i) => (
+                      <Path key={i} d={pointsToPath(s.points)} stroke={s.color} strokeWidth={5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    ))}
+                    {currentStroke.current ? (
+                      <Path
+                        d={pointsToPath(currentStroke.current.points)}
+                        stroke={currentStroke.current.color}
+                        strokeWidth={5}
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    ) : null}
+                  </Svg>
+                </View>
+
+                {mission.colorZones.map((c, i) => (
+                  <Pressable key={i} style={[styles.hitZone, zoneStyle(c)]} onPress={() => setColor(c.color)} />
+                ))}
+
+                <Pressable style={[styles.hitZone, zoneStyle(mission.eraserZone)]} onPress={eraseAll} />
+                <Pressable style={[styles.hitZone, zoneStyle(mission.confirmZone)]} onPress={finishMission} />
+                <Pressable style={[styles.hitZone, zoneStyle(mission.previousZone)]} onPress={goPrevious} />
+                <Pressable style={[styles.hitZone, zoneStyle(mission.nextZone)]} onPress={finishMission} />
+              </>
+            ) : null}
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.bgSky },
-  promptRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, marginBottom: 4 },
-  promptLabel: { fontSize: 16, fontWeight: '800', color: palette.dark, marginHorizontal: 8 },
-  promptEmoji: { fontSize: 32 },
-  canvasWrap: {
-    flex: 1,
-    marginHorizontal: 12,
-    marginBottom: 8,
-    backgroundColor: palette.white,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: palette.dark,
-  },
-  toolbar: { paddingHorizontal: 12, paddingBottom: 16 },
-  palette: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 10 },
-  swatch: { width: 32, height: 32, borderRadius: 16, margin: 4, borderWidth: 2, borderColor: palette.white },
-  swatchSelected: { borderColor: palette.dark, borderWidth: 3 },
-  actions: { flexDirection: 'row', justifyContent: 'center' },
-  actionBtn: {
-    backgroundColor: palette.blue,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 18,
-    marginHorizontal: 6,
-  },
-  actionText: { color: palette.white, fontWeight: '800', fontSize: 13 },
+  container: { flex: 1, backgroundColor: '#3A282D' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  scroll: { flexGrow: 1, justifyContent: 'center' },
+  imageWrap: { position: 'relative', overflow: 'hidden' },
+  missionImage: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+  hitZone: { position: 'absolute' },
+  canvas: { position: 'absolute' },
+  wellDone: { fontSize: 32, fontWeight: '900', color: palette.white, marginBottom: 20 },
+  playAgainBtn: { backgroundColor: palette.green, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 24 },
+  playAgainText: { color: palette.white, fontSize: 18, fontWeight: '800' },
 });

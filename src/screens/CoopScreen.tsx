@@ -1,145 +1,157 @@
-import React, { useEffect, useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Image, LayoutChangeEvent, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Speech from 'expo-speech';
+import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
-import { GAME_CARDS } from '../data/games';
-import WorldHeader from '../components/WorldHeader';
+import { COOP_MISSIONS } from '../data/coopMissions';
+import { Zone } from '../types/mission';
 
-const CARD = GAME_CARDS.find((c) => c.id === 'coop')!;
-
-const BUILD_SEQUENCE = ['🎈', '🎁', '🎂', '🕯️', '🎉'];
-
-function shuffle<T>(arr: T[]): T[] {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
+function zoneStyle(zone: Zone) {
+  return {
+    left: `${zone.left}%` as const,
+    top: `${zone.top}%` as const,
+    width: `${zone.width}%` as const,
+    height: `${zone.height}%` as const,
+  };
 }
 
 export default function CoopScreen() {
   const { t, lang } = useLanguage();
-  const [placedCount, setPlacedCount] = useState(0);
-  const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(1);
-  const [options, setOptions] = useState(() => shuffle(BUILD_SEQUENCE));
-  const [feedback, setFeedback] = useState<'wrong' | null>(null);
-  const finished = placedCount >= BUILD_SEQUENCE.length;
+  const navigation = useNavigation();
+  const [missionIndex, setMissionIndex] = useState(0);
+  const [active, setActive] = useState(false);
+  const [collected, setCollected] = useState<Set<number>>(new Set());
+  const [player, setPlayer] = useState<1 | 2>(1);
+  const [wrapWidth, setWrapWidth] = useState(0);
+
+  const mission = COOP_MISSIONS[missionIndex];
+  const finished = missionIndex >= COOP_MISSIONS.length;
+
+  const onWrapLayout = (e: LayoutChangeEvent) => setWrapWidth(e.nativeEvent.layout.width);
 
   const speak = (text: string) => {
     Speech.stop();
     Speech.speak(text, { language: lang === 'ar' ? 'ar-SA' : 'en-US', pitch: 1.1, rate: 0.9 });
   };
 
-  useEffect(() => {
-    if (finished) speak(t.wellDone);
-  }, [finished]);
+  const start = () => {
+    setActive(true);
+    setCollected(new Set());
+    setPlayer(1);
+    speak(t.workTogether);
+  };
 
-  const onChoose = (piece: string) => {
-    if (feedback || finished) return;
-    const nextNeeded = BUILD_SEQUENCE[placedCount];
-    if (piece === nextNeeded) {
-      speak(lang === 'ar' ? 'رائع!' : 'Nice!');
-      setPlacedCount((c) => c + 1);
-      setCurrentPlayer((p) => (p === 1 ? 2 : 1));
-      setOptions(shuffle(BUILD_SEQUENCE));
+  const onTapPiece = (index: number) => {
+    if (!active || collected.has(index)) return;
+    const next = new Set(collected);
+    next.add(index);
+    setCollected(next);
+    if (next.size === mission.pieceZones.length) {
+      speak(lang === 'ar' ? 'أحسنتم!' : 'Great teamwork!');
+      setTimeout(() => {
+        setActive(false);
+        setCollected(new Set());
+        setMissionIndex((i) => i + 1);
+      }, 900);
     } else {
-      setFeedback('wrong');
-      setTimeout(() => setFeedback(null), 500);
+      setPlayer((p) => (p === 1 ? 2 : 1));
     }
   };
 
+  const goBack = () => {
+    if (missionIndex === 0) {
+      navigation.goBack();
+      return;
+    }
+    setMissionIndex((i) => i - 1);
+    setActive(false);
+    setCollected(new Set());
+  };
+
   const restart = () => {
-    setPlacedCount(0);
-    setCurrentPlayer(1);
-    setOptions(shuffle(BUILD_SEQUENCE));
-    setFeedback(null);
+    setMissionIndex(0);
+    setActive(false);
+    setCollected(new Set());
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <WorldHeader title={lang === 'ar' ? CARD.titleAr : CARD.titleEn} image={CARD.worldImage} />
       {finished ? (
         <View style={styles.center}>
-          <Text style={styles.celebrateEmoji}>🎉🎊</Text>
           <Text style={styles.wellDone}>{t.wellDone}</Text>
           <Pressable style={styles.playAgainBtn} onPress={restart}>
             <Text style={styles.playAgainText}>{t.playAgain}</Text>
           </Pressable>
         </View>
       ) : (
-        <View style={styles.center}>
-          <View style={styles.turnBadge}>
-            <Text style={styles.turnText}>
-              {t.yourTurn} — {lang === 'ar' ? `اللاعب ${currentPlayer}` : `Player ${currentPlayer}`}
-            </Text>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View
+            style={[styles.imageWrap, { width: '100%', height: wrapWidth ? wrapWidth / mission.imageRatio : 1 }]}
+            onLayout={onWrapLayout}
+          >
+            {wrapWidth ? (
+              <>
+                <Image source={mission.image} style={styles.missionImage} resizeMode="cover" />
+
+                {active ? (
+                  <View pointerEvents="none" style={styles.turnBadge}>
+                    <Text style={styles.turnText}>
+                      {t.yourTurn} — {lang === 'ar' ? `اللاعب ${player}` : `Player ${player}`}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {mission.pieceZones.map((zone, i) => (
+                  <Pressable key={i} style={[styles.hitZone, zoneStyle(zone)]} onPress={() => onTapPiece(i)} />
+                ))}
+                {mission.pieceZones.map((zone, i) =>
+                  collected.has(i) ? (
+                    <View key={i} pointerEvents="none" style={[styles.pieceDone, zoneStyle(zone)]}>
+                      <Text style={styles.checkmark}>✓</Text>
+                    </View>
+                  ) : null
+                )}
+
+                {!active ? <Pressable style={[styles.hitZone, zoneStyle(mission.startZone)]} onPress={start} /> : null}
+                <Pressable style={[styles.hitZone, zoneStyle(mission.previousZone)]} onPress={goBack} />
+              </>
+            ) : null}
           </View>
-          <View style={styles.buildRow}>
-            {BUILD_SEQUENCE.map((piece, i) => (
-              <View key={i} style={styles.buildSlot}>
-                <Text style={styles.buildEmoji}>{i < placedCount ? piece : ''}</Text>
-              </View>
-            ))}
-          </View>
-          <Text style={styles.instruction}>{t.workTogether}</Text>
-          <View style={styles.optionsRow}>
-            {options.map((piece, i) => (
-              <Pressable key={i} onPress={() => onChoose(piece)}>
-                <View style={[styles.optionTile, feedback === 'wrong' ? styles.shakeHint : null]}>
-                  <Text style={styles.optionEmoji}>{piece}</Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        </ScrollView>
       )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.bgSky },
+  container: { flex: 1, backgroundColor: '#3A282D' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  turnBadge: {
-    backgroundColor: palette.green,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  turnText: { color: palette.white, fontWeight: '900', fontSize: 16 },
-  buildRow: { flexDirection: 'row', marginBottom: 20 },
-  buildSlot: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    marginHorizontal: 5,
-    backgroundColor: palette.white,
-    borderWidth: 2,
-    borderColor: palette.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buildEmoji: { fontSize: 28 },
-  instruction: { fontSize: 15, fontWeight: '700', color: palette.dark, opacity: 0.7, marginBottom: 16 },
-  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', width: 300 },
-  optionTile: {
-    width: 70,
-    height: 70,
-    margin: 6,
-    borderRadius: 16,
-    backgroundColor: palette.white,
-    alignItems: 'center',
-    justifyContent: 'center',
+  scroll: { flexGrow: 1, justifyContent: 'center' },
+  imageWrap: { position: 'relative', overflow: 'hidden' },
+  missionImage: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+  hitZone: { position: 'absolute' },
+  pieceDone: {
+    position: 'absolute',
     borderWidth: 3,
-    borderColor: palette.orange,
+    borderColor: palette.green,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(63,214,141,0.35)',
   },
-  shakeHint: { borderColor: palette.red },
-  optionEmoji: { fontSize: 32 },
-  celebrateEmoji: { fontSize: 60, marginBottom: 10 },
-  wellDone: { fontSize: 32, fontWeight: '900', color: palette.dark, marginBottom: 20 },
+  checkmark: { color: palette.white, fontWeight: '900', fontSize: 20 },
+  turnBadge: {
+    position: 'absolute',
+    top: '58%',
+    alignSelf: 'center',
+    backgroundColor: palette.green,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 18,
+  },
+  turnText: { color: palette.white, fontWeight: '900', fontSize: 14 },
+  wellDone: { fontSize: 32, fontWeight: '900', color: palette.white, marginBottom: 20 },
   playAgainBtn: { backgroundColor: palette.green, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 24 },
   playAgainText: { color: palette.white, fontSize: 18, fontWeight: '800' },
 });
