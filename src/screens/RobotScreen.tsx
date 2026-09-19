@@ -5,9 +5,11 @@ import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
 import { ROBOT_MISSIONS, Dir } from '../data/robotMissions';
+import { ROBOT_HIDDEN_MISSIONS } from '../data/robotHiddenMissions';
 import { Zone } from '../types/mission';
 import { GAME_CARDS } from '../data/games';
 import CharacterBubble from '../components/CharacterBubble';
+import HiddenObjectBoard from '../components/HiddenObjectBoard';
 import { facingAngle, shortestAngleTo, simulateRobot } from '../utils/robotSim';
 
 function zoneStyle(zone: Zone) {
@@ -70,8 +72,10 @@ export default function RobotScreen() {
   const hintLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const [, forceRender] = useState(0);
 
-  const mission = ROBOT_MISSIONS[missionIndex];
-  const finished = missionIndex >= ROBOT_MISSIONS.length;
+  const inHiddenPhase = missionIndex >= ROBOT_MISSIONS.length;
+  const hiddenIndex = missionIndex - ROBOT_MISSIONS.length;
+  const mission = inHiddenPhase ? undefined : ROBOT_MISSIONS[missionIndex];
+  const finished = inHiddenPhase && hiddenIndex >= ROBOT_HIDDEN_MISSIONS.length;
   const template = mission?.template;
   const imageRatio = mission?.imageRatio ?? (template ? template.cols / template.rows : 1);
   const wrapHeight = wrapWidth ? wrapWidth / imageRatio : 0;
@@ -291,7 +295,9 @@ export default function RobotScreen() {
       })
     : [];
 
-  const renderImageMode = () => (
+  const renderImageMode = () => {
+    if (!mission) return null;
+    return (
     <ScrollView contentContainerStyle={styles.scroll}>
       <View style={[styles.imageWrap, { width: '100%', height: wrapHeight || 1 }]} onLayout={onWrapLayout}>
         {wrapWidth ? (
@@ -336,7 +342,8 @@ export default function RobotScreen() {
         ) : null}
       </View>
     </ScrollView>
-  );
+    );
+  };
 
   const renderTemplateMode = () => {
     if (!template) return null;
@@ -439,6 +446,13 @@ export default function RobotScreen() {
             <Text style={styles.playAgainText}>{t.playAgain}</Text>
           </Pressable>
         </View>
+      ) : inHiddenPhase ? (
+        <HiddenObjectBoard
+          key={ROBOT_HIDDEN_MISSIONS[hiddenIndex].id}
+          mission={ROBOT_HIDDEN_MISSIONS[hiddenIndex]}
+          onSolved={() => setMissionIndex((i) => i + 1)}
+          onPrevious={() => setMissionIndex((i) => Math.max(0, i - 1))}
+        />
       ) : template ? (
         renderTemplateMode()
       ) : (

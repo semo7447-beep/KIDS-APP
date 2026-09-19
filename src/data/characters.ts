@@ -24,4 +24,5 @@ export const CHARACTERS: CharacterItem[] = [
   { id: 'hakeem', image: require('../../assets/characters/hakeem.jpg'), nameAr: 'حكيم', nameEn: 'Hakeem', descAr: 'ذكي ويحب القراءة', descEn: 'Smart and loves reading' },
   { id: 'alaa', image: require('../../assets/characters/alaa.jpg'), nameAr: 'علاء', nameEn: 'Alaa', descAr: 'المحقق الذكي والملاحظ', descEn: 'The smart, observant detective' },
   { id: 'biko', image: require('../../assets/characters/biko.jpg'), nameAr: 'بيكو', nameEn: 'Biko', descAr: 'شغف وحب الرياضة', descEn: 'Passion and love of sports' },
+  { id: 'simo', image: require('../../assets/characters/simo.jpg'), nameAr: 'سيمو', nameEn: 'Simo', descAr: 'قائد الفريق وحب التحديات', descEn: 'Team leader who loves challenges' },
 ];
