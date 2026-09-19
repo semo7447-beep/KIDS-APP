@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Animated, Image, LayoutChangeEvent, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Image, LayoutChangeEvent, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Speech from 'expo-speech';
 import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
@@ -8,6 +8,7 @@ import { ROBOT_MISSIONS, Dir } from '../data/robotMissions';
 import { Zone } from '../types/mission';
 import { GAME_CARDS } from '../data/games';
 import CharacterBubble from '../components/CharacterBubble';
+import { facingAngle, shortestAngleTo, simulateRobot } from '../utils/robotSim';
 
 function zoneStyle(zone: Zone) {
   return {
@@ -16,6 +17,34 @@ function zoneStyle(zone: Zone) {
     width: `${zone.width}%` as const,
     height: `${zone.height}%` as const,
   };
+}
+
+function animateValue(anim: Animated.Value, toValue: number, duration: number, easing = Easing.out(Easing.cubic)): Promise<void> {
+  return new Promise((resolve) => {
+    Animated.timing(anim, { toValue, duration, easing, useNativeDriver: false }).start(() => resolve());
+  });
+}
+
+function animateXY(anim: Animated.ValueXY, toValue: { x: number; y: number }, duration: number, easing = Easing.out(Easing.cubic)): Promise<void> {
+  return new Promise((resolve) => {
+    Animated.timing(anim, { toValue, duration, easing, useNativeDriver: false }).start(() => resolve());
+  });
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shakeOnce(anim: Animated.Value): Promise<void> {
+  return new Promise((resolve) => {
+    Animated.sequence([
+      Animated.timing(anim, { toValue: 1, duration: 55, useNativeDriver: false }),
+      Animated.timing(anim, { toValue: -1, duration: 55, useNativeDriver: false }),
+      Animated.timing(anim, { toValue: 1, duration: 55, useNativeDriver: false }),
+      Animated.timing(anim, { toValue: -1, duration: 55, useNativeDriver: false }),
+      Animated.timing(anim, { toValue: 0, duration: 55, useNativeDriver: false }),
+    ]).start(() => resolve());
+  });
 }
 
 const DIR_ICON: Record<Dir, string> = { forward: '⬆️', left: '⬅️', right: '➡️' };
@@ -29,8 +58,16 @@ export default function RobotScreen() {
   const [running, setRunning] = useState(false);
   const [wrapWidth, setWrapWidth] = useState(0);
   const [feedback, setFeedback] = useState<'fail' | null>(null);
+  const [hintDir, setHintDir] = useState<Dir | null>(null);
+
   const spritePos = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const spriteRotate = useRef(new Animated.Value(0)).current;
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+  const hintPulse = useRef(new Animated.Value(0)).current;
   const spriteVisible = useRef(false);
+  const currentAngleRef = useRef(0);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hintLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const [, forceRender] = useState(0);
 
   const mission = ROBOT_MISSIONS[missionIndex];
@@ -39,6 +76,7 @@ export default function RobotScreen() {
   const imageRatio = mission?.imageRatio ?? (template ? template.cols / template.rows : 1);
   const wrapHeight = wrapWidth ? wrapWidth / imageRatio : 0;
   const slotCount = template?.slotCount ?? mission?.slotCount ?? 0;
+  const activeSolution = template?.solution ?? mission?.solution;
 
   const onWrapLayout = (e: LayoutChangeEvent) => setWrapWidth(e.nativeEvent.layout.width);
 
@@ -60,6 +98,61 @@ export default function RobotScreen() {
     };
   };
 
+  // Snap the sprite to the mission's start cell/point whenever the mission changes.
+  useEffect(() => {
+    if (!wrapWidth) return;
+    if (template) {
+      const startPx = pointToPx(cellCenter(template.start));
+      spritePos.setValue(startPx);
+      const angle = facingAngle(template.startFacing);
+      spriteRotate.setValue(angle);
+      currentAngleRef.current = angle;
+      spriteVisible.current = true;
+    } else if (mission?.startPoint) {
+      spritePos.setValue(pointToPx(mission.startPoint));
+      spriteRotate.setValue(0);
+      currentAngleRef.current = 0;
+      spriteVisible.current = false;
+    }
+    forceRender((n) => n + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missionIndex, wrapWidth]);
+
+  // 7-second idle hint timer: re-arms every time the queue or mission changes.
+  useEffect(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    setHintDir(null);
+    if (running || finished || !activeSolution) return undefined;
+    idleTimerRef.current = setTimeout(() => {
+      const nextIndex = sequence.length;
+      if (nextIndex < activeSolution.length) {
+        setHintDir(activeSolution[nextIndex]);
+      }
+    }, 7000);
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sequence, missionIndex, running, finished]);
+
+  // Pulse loop follows hintDir on/off.
+  useEffect(() => {
+    if (hintDir) {
+      hintPulse.setValue(0);
+      hintLoopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(hintPulse, { toValue: 1, duration: 500, useNativeDriver: false }),
+          Animated.timing(hintPulse, { toValue: 0, duration: 500, useNativeDriver: false }),
+        ])
+      );
+      hintLoopRef.current.start();
+    } else {
+      hintLoopRef.current?.stop();
+      hintPulse.setValue(0);
+    }
+    return () => hintLoopRef.current?.stop();
+  }, [hintDir]);
+
   const addCommand = (dir: Dir) => {
     if (running || sequence.length >= slotCount) return;
     setSequence((prev) => [...prev, dir]);
@@ -69,49 +162,98 @@ export default function RobotScreen() {
     if (running) return;
     setSequence([]);
     setFeedback(null);
-    spriteVisible.current = false;
-    forceRender((n) => n + 1);
   };
 
   const goBack = () => {
+    if (running) return;
     if (missionIndex === 0) {
       navigation.goBack();
       return;
     }
     setMissionIndex((i) => i - 1);
     setSequence([]);
-    spriteVisible.current = false;
   };
 
   const restart = () => {
     setMissionIndex(0);
     setSequence([]);
-    spriteVisible.current = false;
   };
 
-  const play = () => {
-    if (running || sequence.length === 0 || !wrapWidth) return;
-    const isCorrect =
-      sequence.length === mission.solution.length && sequence.every((d, i) => d === mission.solution[i]);
+  const returnToStartTemplate = async () => {
+    if (!template) return;
+    const startPx = pointToPx(cellCenter(template.start));
+    const targetAngle = shortestAngleTo(currentAngleRef.current, facingAngle(template.startFacing));
+    await Promise.all([
+      animateXY(spritePos, startPx, 450),
+      animateValue(spriteRotate, targetAngle, 450),
+    ]);
+    currentAngleRef.current = facingAngle(template.startFacing);
+    spriteRotate.setValue(currentAngleRef.current);
+  };
 
-    const startPoint = template ? cellCenter(template.start) : mission.startPoint!;
-    const goalPoint = template ? cellCenter(template.goal) : mission.goalPoint!;
+  // Template mode: real cell-by-cell playback (turn, move, collide, or reach goal).
+  const playTemplate = async () => {
+    if (!template || running || sequence.length === 0 || !wrapWidth) return;
+    setRunning(true);
+    setFeedback(null);
+    setHintDir(null);
+
+    const steps = simulateRobot(sequence, template.start, template.startFacing, template.cols, template.rows, template.obstacles, template.goal);
+
+    for (const step of steps) {
+      if (step.outcome === 'turned') {
+        const delta = step.command === 'right' ? 90 : -90;
+        const toAngle = currentAngleRef.current + delta;
+        await animateValue(spriteRotate, toAngle, 320, Easing.out(Easing.back(1.4)));
+        currentAngleRef.current = toAngle;
+      } else if (step.outcome === 'moved' || step.outcome === 'goal') {
+        const px = pointToPx(cellCenter({ col: step.col, row: step.row }));
+        await animateXY(spritePos, px, 420);
+
+        if (step.outcome === 'goal') {
+          speak(lang === 'ar' ? 'وصلنا للهدف! أحسنت!' : 'Reached the goal! Well done!');
+          await wait(500);
+          setRunning(false);
+          setSequence([]);
+          setMissionIndex((i) => i + 1);
+          return;
+        }
+      } else if (step.outcome === 'blocked') {
+        await shakeOnce(shakeAnim);
+        await returnToStartTemplate();
+        speak(t.wrongTryAgain);
+        setFeedback('fail');
+        setSequence([]);
+        setRunning(false);
+        setTimeout(() => setFeedback(null), 700);
+        return;
+      }
+    }
+
+    // Every command ran but the goal was never reached — a calm reset, no shake.
+    await returnToStartTemplate();
+    speak(t.wrongTryAgain);
+    setFeedback('fail');
+    setSequence([]);
+    setRunning(false);
+    setTimeout(() => setFeedback(null), 700);
+  };
+
+  // Image mode (mission 1): the original straight-line success path, now with a shake on failure.
+  const playImage = () => {
+    if (!mission || running || sequence.length === 0 || !wrapWidth || !mission.startPoint || !mission.goalPoint) return;
+    const isCorrect = sequence.length === mission.solution.length && sequence.every((d, i) => d === mission.solution[i]);
 
     setRunning(true);
     setFeedback(null);
-    const start = pointToPx(startPoint);
-    spritePos.setValue({ x: start.x, y: start.y });
+    setHintDir(null);
+    spritePos.setValue(pointToPx(mission.startPoint));
     spriteVisible.current = true;
     forceRender((n) => n + 1);
 
     if (isCorrect) {
-      const goal = pointToPx(goalPoint);
       speak(lang === 'ar' ? 'يلا نتحرك!' : "Let's go!");
-      Animated.timing(spritePos, {
-        toValue: { x: goal.x, y: goal.y },
-        duration: 1400,
-        useNativeDriver: false,
-      }).start(() => {
+      animateXY(spritePos, pointToPx(mission.goalPoint), 1400).then(() => {
         speak(lang === 'ar' ? 'وصلنا للهدف! أحسنت!' : 'Reached the goal! Well done!');
         setTimeout(() => {
           setRunning(false);
@@ -121,17 +263,26 @@ export default function RobotScreen() {
         }, 900);
       });
     } else {
-      speak(t.wrongTryAgain);
-      setTimeout(() => {
-        setRunning(false);
-        setFeedback('fail');
-        setSequence([]);
-        spriteVisible.current = false;
-        forceRender((n) => n + 1);
-        setTimeout(() => setFeedback(null), 700);
-      }, 500);
+      shakeOnce(shakeAnim).then(() => {
+        speak(t.wrongTryAgain);
+        setTimeout(() => {
+          setRunning(false);
+          setFeedback('fail');
+          setSequence([]);
+          spriteVisible.current = false;
+          forceRender((n) => n + 1);
+          setTimeout(() => setFeedback(null), 700);
+        }, 300);
+      });
     }
   };
+
+  const rotateDeg = spriteRotate.interpolate({ inputRange: [-1000, 1000], outputRange: ['-1000deg', '1000deg'] });
+  const shakeTranslate = shakeAnim.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] });
+  const spriteTransform = [...spritePos.getTranslateTransform(), { translateX: shakeTranslate }, { rotate: rotateDeg }];
+
+  const hintScale = hintPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
+  const hintOpacity = hintPulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.7] });
 
   const slotCells = mission && !template
     ? Array.from({ length: slotCount }, (_, i) => {
@@ -151,8 +302,18 @@ export default function RobotScreen() {
             <Pressable style={[styles.hitZone, zoneStyle(mission.leftZone!)]} onPress={() => addCommand('left')} />
             <Pressable style={[styles.hitZone, zoneStyle(mission.rightZone!)]} onPress={() => addCommand('right')} />
             <Pressable style={[styles.hitZone, zoneStyle(mission.clearZone!)]} onPress={clearSequence} />
-            <Pressable style={[styles.hitZone, zoneStyle(mission.playZone!)]} onPress={play} />
+            <Pressable style={[styles.hitZone, zoneStyle(mission.playZone!)]} onPress={playImage} />
             <Pressable style={[styles.hitZone, zoneStyle(mission.backZone!)]} onPress={goBack} />
+
+            {hintDir === 'forward' ? (
+              <Animated.View pointerEvents="none" style={[styles.hintOverlay, zoneStyle(mission.forwardZone!), { opacity: hintOpacity }]} />
+            ) : null}
+            {hintDir === 'left' ? (
+              <Animated.View pointerEvents="none" style={[styles.hintOverlay, zoneStyle(mission.leftZone!), { opacity: hintOpacity }]} />
+            ) : null}
+            {hintDir === 'right' ? (
+              <Animated.View pointerEvents="none" style={[styles.hintOverlay, zoneStyle(mission.rightZone!), { opacity: hintOpacity }]} />
+            ) : null}
 
             {slotCells.map((cell, i) => (
               <View key={i} pointerEvents="none" style={[styles.slotCell, zoneStyle(cell)]}>
@@ -161,7 +322,7 @@ export default function RobotScreen() {
             ))}
 
             {spriteVisible.current ? (
-              <Animated.View pointerEvents="none" style={[styles.sprite, { transform: spritePos.getTranslateTransform() }]}>
+              <Animated.View pointerEvents="none" style={[styles.sprite, { transform: spriteTransform }]}>
                 <Text style={styles.spriteEmoji}>🤖</Text>
               </Animated.View>
             ) : null}
@@ -221,21 +382,10 @@ export default function RobotScreen() {
             : null}
 
           {wrapWidth && spriteVisible.current ? (
-            <Animated.View pointerEvents="none" style={[styles.sprite, { transform: spritePos.getTranslateTransform() }]}>
+            <Animated.View pointerEvents="none" style={[styles.sprite, { transform: spriteTransform }]}>
               <Text style={styles.spriteEmoji}>🤖</Text>
             </Animated.View>
           ) : null}
-
-          {wrapWidth && !spriteVisible.current
-            ? (() => {
-                const p = pointToPx(cellCenter(template.start));
-                return (
-                  <View pointerEvents="none" style={[styles.sprite, { left: p.x - 23, top: p.y - 23 }]}>
-                    <Text style={styles.spriteEmoji}>🤖</Text>
-                  </View>
-                );
-              })()
-            : null}
 
           {feedback === 'fail' ? (
             <View pointerEvents="none" style={styles.failBannerTemplate}>
@@ -253,21 +403,27 @@ export default function RobotScreen() {
         </View>
 
         <View style={styles.commandRow}>
-          <Pressable style={styles.commandBtn} onPress={() => addCommand('forward')}>
-            <Text style={styles.commandIcon}>⬆️</Text>
-          </Pressable>
-          <Pressable style={styles.commandBtn} onPress={() => addCommand('left')}>
-            <Text style={styles.commandIcon}>⬅️</Text>
-          </Pressable>
-          <Pressable style={styles.commandBtn} onPress={() => addCommand('right')}>
-            <Text style={styles.commandIcon}>➡️</Text>
-          </Pressable>
+          <Animated.View style={hintDir === 'forward' ? { transform: [{ scale: hintScale }] } : undefined}>
+            <Pressable style={styles.commandBtn} onPress={() => addCommand('forward')}>
+              <Text style={styles.commandIcon}>⬆️</Text>
+            </Pressable>
+          </Animated.View>
+          <Animated.View style={hintDir === 'left' ? { transform: [{ scale: hintScale }] } : undefined}>
+            <Pressable style={styles.commandBtn} onPress={() => addCommand('left')}>
+              <Text style={styles.commandIcon}>⬅️</Text>
+            </Pressable>
+          </Animated.View>
+          <Animated.View style={hintDir === 'right' ? { transform: [{ scale: hintScale }] } : undefined}>
+            <Pressable style={styles.commandBtn} onPress={() => addCommand('right')}>
+              <Text style={styles.commandIcon}>➡️</Text>
+            </Pressable>
+          </Animated.View>
           <Pressable style={styles.commandBtn} onPress={clearSequence}>
             <Text style={styles.commandIcon}>🗑️</Text>
           </Pressable>
         </View>
 
-        <Pressable style={styles.playBtn} onPress={play}>
+        <Pressable style={styles.playBtn} onPress={playTemplate}>
           <Text style={styles.playBtnText}>▶ {t.startRobot}</Text>
         </Pressable>
       </ScrollView>
@@ -299,6 +455,13 @@ const styles = StyleSheet.create({
   imageWrap: { position: 'relative', overflow: 'hidden' },
   missionImage: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   hitZone: { position: 'absolute' },
+  hintOverlay: {
+    position: 'absolute',
+    backgroundColor: palette.yellow,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: palette.yellow,
+  },
   slotCell: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   slotIcon: { fontSize: 20 },
   sprite: {
