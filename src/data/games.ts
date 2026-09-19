@@ -25,6 +25,7 @@ const CARD_IMAGES: Record<string, ReturnType<typeof require>> = {
   speed: require('../../assets/cards/speed.jpg'),
   drawguess: require('../../assets/cards/drawguess.jpg'),
   coop: require('../../assets/cards/coop.jpg'),
+  king: require('../../assets/missions/king/hidden_scene1_full.jpg'),
 };
 
 const WORLD_IMAGES: Record<string, ReturnType<typeof require>> = {
@@ -38,6 +39,7 @@ const WORLD_IMAGES: Record<string, ReturnType<typeof require>> = {
   speed: require('../../assets/worlds/speed.jpg'),
   drawguess: require('../../assets/worlds/drawguess.jpg'),
   coop: require('../../assets/worlds/coop.jpg'),
+  king: require('../../assets/missions/king/hidden_scene1_full.jpg'),
 };
 
 type GameCardData = Omit<GameCard, 'cardImage' | 'worldImage'>;
@@ -172,6 +174,19 @@ const GAME_CARDS_DATA: GameCardData[] = [
     descEn: 'Work together!',
     skillsAr: ['التعاون', 'التواصل', 'العمل الجماعي'],
     skillsEn: ['Cooperation', 'Communication', 'Teamwork'],
+  },
+  {
+    id: 'king',
+    number: 11,
+    screen: 'King',
+    emoji: '👑',
+    color: '#B8860B',
+    titleAr: 'مملكة الملك سيمو',
+    titleEn: "King Simo's Kingdom",
+    descAr: 'دور على كنوز المملكة المخفية!',
+    descEn: 'Find the kingdom\'s hidden treasures!',
+    skillsAr: ['الملاحظة', 'التركيز', 'الصبر'],
+    skillsEn: ['Observation', 'Focus', 'Patience'],
   },
 ];
 
