@@ -5,6 +5,7 @@ export type HiddenObjectItem = {
   width: number;
   height: number;
   icon: ReturnType<typeof require>;
+  cover?: ReturnType<typeof require>;
   labelAr: string;
   labelEn: string;
 };

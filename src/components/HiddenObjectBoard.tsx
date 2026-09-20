@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Animated, Image, LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PinchGestureHandler, PinchGestureHandlerGestureEvent, PinchGestureHandlerStateChangeEvent, State } from 'react-native-gesture-handler';
 import * as Speech from 'expo-speech';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
@@ -9,7 +10,6 @@ import CharacterBubble from './CharacterBubble';
 
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 2.2;
-const ZOOM_STEP = 0.4;
 
 function zoneStyle(zone: Zone) {
   return {
@@ -62,8 +62,21 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
     Speech.speak(text, { language: lang === 'ar' ? 'ar-SA' : 'en-US', pitch: 1.1, rate: 0.9 });
   };
 
-  const zoomIn = () => setScale((s) => Math.min(ZOOM_MAX, +(s + ZOOM_STEP).toFixed(2)));
-  const zoomOut = () => setScale((s) => Math.max(ZOOM_MIN, +(s - ZOOM_STEP).toFixed(2)));
+  const scaleRef = useRef(1);
+  const pinchBaseScale = useRef(1);
+  const setScaleBoth = (v: number) => {
+    scaleRef.current = v;
+    setScale(v);
+  };
+  const onPinchEvent = (evt: PinchGestureHandlerGestureEvent) => {
+    const next = pinchBaseScale.current * evt.nativeEvent.scale;
+    setScaleBoth(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next)));
+  };
+  const onPinchStateChange = (evt: PinchGestureHandlerStateChangeEvent) => {
+    if (evt.nativeEvent.oldState === State.ACTIVE) {
+      pinchBaseScale.current = scaleRef.current;
+    }
+  };
 
   const playPop = () => {
     popScale.setValue(0.5);
@@ -188,78 +201,76 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
       <View style={styles.sceneOuter} onLayout={onSceneOuterLayout}>
         <ScrollView contentContainerStyle={styles.sceneScrollV}>
           <ScrollView horizontal scrollEnabled={scale > 1} contentContainerStyle={displayWidth ? { width: displayWidth } : styles.sceneScrollH}>
-            <View style={[styles.imageWrap, { width: displayWidth || '100%', height: displayHeight || 1 }]}>
-              {baseWidth ? (
-                <>
-                  <Image source={mission.image} style={styles.missionImage} resizeMode="cover" />
+            <PinchGestureHandler onGestureEvent={onPinchEvent} onHandlerStateChange={onPinchStateChange}>
+              <View style={[styles.imageWrap, { width: displayWidth || '100%', height: displayHeight || 1 }]}>
+                {baseWidth ? (
+                  <>
+                    <Image source={mission.image} style={styles.missionImage} resizeMode="cover" />
 
-                  {mission.objects.map((obj) => {
-                    if (foundIds.has(obj.id)) return null;
-                    return (
-                      <Pressable
-                        key={obj.id}
-                        style={[styles.hitZone, zoneStyle(obj)]}
-                        onPress={() => onTapObject(obj)}
+                    {mission.objects.map((obj) => {
+                      if (foundIds.has(obj.id)) return null;
+                      return (
+                        <Pressable
+                          key={obj.id}
+                          style={[styles.hitZone, zoneStyle(obj)]}
+                          onPress={() => onTapObject(obj)}
+                        />
+                      );
+                    })}
+
+                    {hintedId ? (
+                      <Animated.View
+                        pointerEvents="none"
+                        style={[styles.hintOverlay, zoneStyle(mission.objects.find((o) => o.id === hintedId)!), { opacity: hintOpacity }]}
                       />
-                    );
-                  })}
+                    ) : null}
 
-                  {hintedId ? (
-                    <Animated.View
-                      pointerEvents="none"
-                      style={[styles.hintOverlay, zoneStyle(mission.objects.find((o) => o.id === hintedId)!), { opacity: hintOpacity }]}
-                    />
-                  ) : null}
-
-                  {mission.objects.map((obj) =>
-                    foundIds.has(obj.id) ? (
-                      <View key={'found-' + obj.id} pointerEvents="none" style={[styles.foundOverlay, zoneStyle(obj)]}>
-                        <View style={styles.foundBadge}>
-                          <Text style={styles.foundBadgeText}>✓</Text>
+                    {mission.objects.map((obj) =>
+                      foundIds.has(obj.id) ? (
+                        <View key={'found-' + obj.id} pointerEvents="none" style={[styles.foundOverlay, zoneStyle(obj)]}>
+                          {obj.cover ? (
+                            <Image source={obj.cover} style={styles.foundCoverImage} resizeMode="cover" />
+                          ) : (
+                            <View style={styles.foundTint} />
+                          )}
+                          <View style={styles.foundBadge}>
+                            <Text style={styles.foundBadgeText}>✓</Text>
+                          </View>
                         </View>
-                      </View>
-                    ) : null
-                  )}
+                      ) : null
+                    )}
 
-                  {wrongMark ? (
-                    <Animated.View
-                      key={wrongMark.key}
-                      pointerEvents="none"
-                      style={[
-                        styles.wrongMark,
-                        { left: wrongMark.x - 22, top: wrongMark.y - 22, opacity: wrongOpacity, transform: [{ scale: wrongScale }] },
-                      ]}
-                    >
-                      <Text style={styles.wrongMarkText}>✕</Text>
-                    </Animated.View>
-                  ) : null}
+                    {wrongMark ? (
+                      <Animated.View
+                        key={wrongMark.key}
+                        pointerEvents="none"
+                        style={[
+                          styles.wrongMark,
+                          { left: wrongMark.x - 22, top: wrongMark.y - 22, opacity: wrongOpacity, transform: [{ scale: wrongScale }] },
+                        ]}
+                      >
+                        <Text style={styles.wrongMarkText}>✕</Text>
+                      </Animated.View>
+                    ) : null}
 
-                  {pop && popObj ? (
-                    <Animated.View
-                      key={pop.key}
-                      pointerEvents="none"
-                      style={[
-                        styles.popWrap,
-                        { left: pop.x - 48, top: pop.y - 48, opacity: popOpacity, transform: [{ scale: popScale }] },
-                      ]}
-                    >
-                      <Image source={popObj.icon} style={styles.popIcon} resizeMode="contain" />
-                    </Animated.View>
-                  ) : null}
-                </>
-              ) : null}
-            </View>
+                    {pop && popObj ? (
+                      <Animated.View
+                        key={pop.key}
+                        pointerEvents="none"
+                        style={[
+                          styles.popWrap,
+                          { left: pop.x - 48, top: pop.y - 48, opacity: popOpacity, transform: [{ scale: popScale }] },
+                        ]}
+                      >
+                        <Image source={popObj.icon} style={styles.popIcon} resizeMode="contain" />
+                      </Animated.View>
+                    ) : null}
+                  </>
+                ) : null}
+              </View>
+            </PinchGestureHandler>
           </ScrollView>
         </ScrollView>
-
-        <View style={styles.zoomControls} pointerEvents="box-none">
-          <Pressable style={styles.zoomBtn} onPress={zoomIn}>
-            <Text style={styles.zoomBtnText}>＋</Text>
-          </Pressable>
-          <Pressable style={styles.zoomBtn} onPress={zoomOut}>
-            <Text style={styles.zoomBtnText}>－</Text>
-          </Pressable>
-        </View>
       </View>
 
       {failedMessage ? (
@@ -331,12 +342,14 @@ const styles = StyleSheet.create({
   },
   foundOverlay: {
     position: 'absolute',
-    backgroundColor: 'rgba(15,15,25,0.4)',
-    borderRadius: 12,
+    overflow: 'hidden',
+    borderRadius: 10,
     alignItems: 'flex-end',
     justifyContent: 'flex-start',
     padding: 2,
   },
+  foundCoverImage: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+  foundTint: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15,15,25,0.4)' },
   foundBadge: {
     width: 20,
     height: 20,
@@ -372,25 +385,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   popIcon: { width: '100%', height: '100%' },
-  zoomControls: {
-    position: 'absolute',
-    right: 10,
-    bottom: 10,
-    gap: 8,
-  },
-  zoomBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  zoomBtnText: { fontSize: 20, fontWeight: '900', color: palette.dark },
   failBanner: {
     position: 'absolute',
     top: '45%',
