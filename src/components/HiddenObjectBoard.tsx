@@ -29,17 +29,30 @@ type Props = {
 type PopMark = { objId: string; x: number; y: number; key: number };
 type WrongMark = { x: number; y: number; key: number };
 
+const HINT_ZOOM = 1.8;
+
+function fmtTime(totalSeconds: number) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Props) {
-  const { t, lang } = useLanguage();
+  const { lang } = useLanguage();
   const [baseWidth, setBaseWidth] = useState(0);
+  const [viewportH, setViewportH] = useState(0);
   const [scale, setScale] = useState(1);
   const [foundIds, setFoundIds] = useState<Set<string>>(new Set());
   const [lives, setLives] = useState(mission.lives);
   const [hintsLeft, setHintsLeft] = useState(mission.hints);
+  const [mistakes, setMistakes] = useState(0);
   const [hintedId, setHintedId] = useState<string | null>(null);
-  const [failedMessage, setFailedMessage] = useState(false);
+  const [showWin, setShowWin] = useState(false);
+  const [showLose, setShowLose] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [pop, setPop] = useState<PopMark | null>(null);
   const [wrongMark, setWrongMark] = useState<WrongMark | null>(null);
+  const startTimeRef = useRef(Date.now());
 
   const popScale = useRef(new Animated.Value(0.5)).current;
   const popOpacity = useRef(new Animated.Value(1)).current;
@@ -48,6 +61,8 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
   const hintPulse = useRef(new Animated.Value(0)).current;
   const hintLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const verticalScrollRef = useRef<ScrollView>(null);
+  const horizontalScrollRef = useRef<ScrollView>(null);
 
   const baseHeight = baseWidth ? baseWidth / mission.imageRatio : 0;
   const displayWidth = baseWidth * scale;
@@ -55,6 +70,7 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
 
   const onSceneOuterLayout = (e: LayoutChangeEvent) => {
     if (!baseWidth) setBaseWidth(e.nativeEvent.layout.width);
+    setViewportH(e.nativeEvent.layout.height);
   };
 
   const speak = (text: string) => {
@@ -102,7 +118,7 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
   };
 
   const onTapObject = (obj: HiddenObjectItem) => {
-    if (foundIds.has(obj.id) || failedMessage || !displayWidth) return;
+    if (foundIds.has(obj.id) || showWin || showLose || !displayWidth) return;
 
     const zoneLeft = (obj.left / 100) * displayWidth;
     const zoneTop = (obj.top / 100) * displayHeight;
@@ -119,17 +135,19 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
 
       if (next.size === mission.targetIds.length) {
         speak(lang === 'ar' ? 'أحسنت! لقيت كل الأدلة!' : 'Great job! You found all the clues!');
-        setTimeout(onSolved, 900);
+        setTimeout(() => {
+          setElapsed(Math.round((Date.now() - startTimeRef.current) / 1000));
+          setShowWin(true);
+        }, 900);
       }
     } else {
       setWrongMark({ x: zoneLeft + zoneW / 2, y: zoneTop + zoneH / 2, key: Date.now() });
       playWrongMark();
+      setMistakes((m) => m + 1);
       const remaining = lives - 1;
       if (remaining <= 0) {
-        setLives(mission.lives);
-        speak(t.wrongTryAgain);
-        setFailedMessage(true);
-        setTimeout(() => setFailedMessage(false), 1300);
+        setLives(0);
+        setShowLose(true);
       } else {
         setLives(remaining);
       }
@@ -137,7 +155,7 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
   };
 
   const onHint = () => {
-    if (hintsLeft <= 0 || failedMessage) return;
+    if (hintsLeft <= 0 || showWin || showLose) return;
     const nextTarget = mission.targetIds.find((id) => !foundIds.has(id));
     if (!nextTarget) return;
     setHintsLeft((h) => h - 1);
@@ -156,7 +174,47 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
       hintLoopRef.current?.stop();
       setHintedId(null);
     }, 3000);
+
+    if (baseWidth && viewportH) {
+      const targetScale = Math.max(scaleRef.current, HINT_ZOOM);
+      const obj = mission.objects.find((o) => o.id === nextTarget)!;
+      const dW = baseWidth * targetScale;
+      const dH = baseHeight * targetScale;
+      const cx = (obj.left / 100) * dW + ((obj.width / 100) * dW) / 2;
+      const cy = (obj.top / 100) * dH + ((obj.height / 100) * dH) / 2;
+      const scrollX = Math.max(0, Math.min(dW - baseWidth, cx - baseWidth / 2));
+      const scrollY = Math.max(0, Math.min(dH - viewportH, cy - viewportH / 2));
+      if (targetScale !== scaleRef.current) {
+        pinchBaseScale.current = targetScale;
+        setScaleBoth(targetScale);
+      }
+      setTimeout(() => {
+        horizontalScrollRef.current?.scrollTo({ x: scrollX, animated: true });
+        verticalScrollRef.current?.scrollTo({ y: scrollY, animated: true });
+      }, 80);
+    }
   };
+
+  const resetBoardState = () => {
+    setFoundIds(new Set());
+    setLives(mission.lives);
+    setHintsLeft(mission.hints);
+    setMistakes(0);
+    setHintedId(null);
+    setScaleBoth(1);
+    pinchBaseScale.current = 1;
+    startTimeRef.current = Date.now();
+    setShowWin(false);
+    setShowLose(false);
+  };
+
+  const handleRetry = () => {
+    setLives(mission.lives);
+    setShowLose(false);
+  };
+
+  const hintsUsed = mission.hints - hintsLeft;
+  const stars = mistakes + hintsUsed === 0 ? 3 : mistakes + hintsUsed <= 2 ? 2 : 1;
 
   const hintOpacity = hintPulse.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.65] });
   const popObj = pop ? mission.objects.find((o) => o.id === pop.objId) : null;
@@ -199,8 +257,13 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
       </ScrollView>
 
       <View style={styles.sceneOuter} onLayout={onSceneOuterLayout}>
-        <ScrollView contentContainerStyle={styles.sceneScrollV}>
-          <ScrollView horizontal scrollEnabled={scale > 1} contentContainerStyle={displayWidth ? { width: displayWidth } : styles.sceneScrollH}>
+        <ScrollView ref={verticalScrollRef} contentContainerStyle={styles.sceneScrollV}>
+          <ScrollView
+            ref={horizontalScrollRef}
+            horizontal
+            scrollEnabled={scale > 1}
+            contentContainerStyle={displayWidth ? { width: displayWidth } : styles.sceneScrollH}
+          >
             <PinchGestureHandler onGestureEvent={onPinchEvent} onHandlerStateChange={onPinchStateChange}>
               <View style={[styles.imageWrap, { width: displayWidth || '100%', height: displayHeight || 1 }]}>
                 {baseWidth ? (
@@ -273,9 +336,44 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
         </ScrollView>
       </View>
 
-      {failedMessage ? (
-        <View style={styles.failBanner} pointerEvents="none">
-          <Text style={styles.failBannerText}>{t.wrongTryAgain}</Text>
+      {showWin ? (
+        <View style={styles.resultOverlay}>
+          <View style={styles.resultCard}>
+            <Text style={styles.resultTitle}>{lang === 'ar' ? 'القضية انحلّت! 🎉' : 'Case Solved! 🎉'}</Text>
+            <View style={styles.starsRow}>
+              {[1, 2, 3].map((i) => (
+                <Text key={i} style={styles.starText}>
+                  {i <= stars ? '⭐' : '☆'}
+                </Text>
+              ))}
+            </View>
+            <View style={styles.statsRow}>
+              <Text style={styles.statText}>⏱ {fmtTime(elapsed)}</Text>
+              <Text style={styles.statText}>❌ {mistakes}</Text>
+              <Text style={styles.statText}>💡 {hintsUsed}</Text>
+            </View>
+            <Pressable style={styles.primaryBtn} onPress={onSolved}>
+              <Text style={styles.primaryBtnText}>{lang === 'ar' ? 'المستوى التالي ▶' : 'Next Level ▶'}</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryBtn} onPress={resetBoardState}>
+              <Text style={styles.secondaryBtnText}>{lang === 'ar' ? 'إعادة 🔁' : 'Replay 🔁'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {showLose ? (
+        <View style={styles.resultOverlay}>
+          <View style={styles.resultCard}>
+            <Text style={styles.resultTitle}>{lang === 'ar' ? 'خلصت القلوب! 💔' : 'Out of Lives! 💔'}</Text>
+            <Text style={styles.resultSubtitle}>{lang === 'ar' ? 'حظ أوفر المرة الجاية!' : 'Better luck next time!'}</Text>
+            <Pressable style={styles.primaryBtn} onPress={handleRetry}>
+              <Text style={styles.primaryBtnText}>{lang === 'ar' ? 'إعادة المحاولة 🔁' : 'Retry 🔁'}</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryBtn} onPress={onPrevious}>
+              <Text style={styles.secondaryBtnText}>{lang === 'ar' ? 'الرئيسية 🏠' : 'Home 🏠'}</Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
     </View>
@@ -385,14 +483,53 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   popIcon: { width: '100%', height: '100%' },
-  failBanner: {
+  resultOverlay: {
     position: 'absolute',
-    top: '45%',
-    alignSelf: 'center',
-    backgroundColor: 'rgba(255,94,94,0.92)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 16,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(20,15,30,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
   },
-  failBannerText: { color: palette.white, fontWeight: '900', fontSize: 18 },
+  resultCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: palette.white,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  resultTitle: { fontSize: 22, fontWeight: '900', color: palette.dark, textAlign: 'center', marginBottom: 8 },
+  resultSubtitle: { fontSize: 15, color: palette.dark, opacity: 0.7, textAlign: 'center', marginBottom: 16 },
+  starsRow: { flexDirection: 'row', gap: 6, marginBottom: 16 },
+  starText: { fontSize: 34 },
+  statsRow: { flexDirection: 'row', gap: 18, marginBottom: 20 },
+  statText: { fontSize: 15, fontWeight: '700', color: palette.dark },
+  primaryBtn: {
+    backgroundColor: palette.green,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 20,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  primaryBtnText: { color: palette.white, fontWeight: '900', fontSize: 16 },
+  secondaryBtn: {
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  secondaryBtnText: { color: palette.dark, fontWeight: '800', fontSize: 15 },
 });
