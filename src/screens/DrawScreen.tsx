@@ -8,6 +8,8 @@ import { DRAW_MISSIONS } from '../data/drawMissions';
 import { Zone } from '../types/mission';
 import { GAME_CARDS } from '../data/games';
 import CharacterBubble from '../components/CharacterBubble';
+import ColoringCanvas from '../components/ColoringCanvas';
+import { COLORING_TEMPLATES } from '../data/coloringTemplates';
 
 function zoneStyle(zone: Zone) {
   return {
@@ -38,8 +40,10 @@ export default function DrawScreen() {
   const currentStroke = useRef<Stroke | null>(null);
   const [, forceRender] = useState(0);
 
-  const mission = DRAW_MISSIONS[missionIndex];
-  const finished = missionIndex >= DRAW_MISSIONS.length;
+  const inColoringPhase = missionIndex >= DRAW_MISSIONS.length;
+  const coloringIndex = missionIndex - DRAW_MISSIONS.length;
+  const mission = inColoringPhase ? undefined : DRAW_MISSIONS[missionIndex];
+  const finished = inColoringPhase && coloringIndex >= COLORING_TEMPLATES.length;
   const template = mission?.template;
 
   const onWrapLayout = (e: LayoutChangeEvent) => setWrapWidth(e.nativeEvent.layout.width);
@@ -111,7 +115,9 @@ export default function DrawScreen() {
     </Svg>
   );
 
-  const renderImageMode = () => (
+  const renderImageMode = () => {
+    if (!mission) return null;
+    return (
     <ScrollView contentContainerStyle={styles.scroll}>
       <View
         style={[styles.imageWrap, { width: '100%', height: wrapWidth ? wrapWidth / (mission.imageRatio ?? 1) : 1 }]}
@@ -137,7 +143,34 @@ export default function DrawScreen() {
         ) : null}
       </View>
     </ScrollView>
-  );
+    );
+  };
+
+  const renderColoringMode = () => {
+    const colTemplate = COLORING_TEMPLATES[coloringIndex];
+    return (
+      <ScrollView contentContainerStyle={styles.templateScroll}>
+        <View style={styles.templateTopRow}>
+          <Pressable style={styles.templateBackBtn} onPress={goPrevious}>
+            <Text style={styles.backIcon}>{lang === 'ar' ? '▶' : '◀'}</Text>
+          </Pressable>
+          <Text style={styles.templateMissionLabel}>
+            {t.missionLabel} {coloringIndex + 1} / {COLORING_TEMPLATES.length}
+          </Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        <CharacterBubble
+          characterId="lulu"
+          text={lang === 'ar' ? `لوّن: ${colTemplate.titleAr} 🎨` : `Color: ${colTemplate.titleEn} 🎨`}
+        />
+
+        <View style={{ marginTop: 12 }}>
+          <ColoringCanvas key={colTemplate.id} template={colTemplate} onDone={() => setMissionIndex((i) => i + 1)} />
+        </View>
+      </ScrollView>
+    );
+  };
 
   const renderTemplateMode = () => {
     if (!template) return null;
@@ -200,6 +233,8 @@ export default function DrawScreen() {
             <Text style={styles.playAgainText}>{t.playAgain}</Text>
           </Pressable>
         </View>
+      ) : inColoringPhase ? (
+        renderColoringMode()
       ) : template ? (
         renderTemplateMode()
       ) : (
