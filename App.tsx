@@ -19,6 +19,7 @@ import SpeedScreen from './src/screens/SpeedScreen';
 import DrawScreen from './src/screens/DrawScreen';
 import CoopScreen from './src/screens/CoopScreen';
 import KingScreen from './src/screens/KingScreen';
+import MimoScreen from './src/screens/MimoScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -43,6 +44,7 @@ export default function App() {
                 <Stack.Screen name="Draw" component={DrawScreen} />
                 <Stack.Screen name="Coop" component={CoopScreen} />
                 <Stack.Screen name="King" component={KingScreen} />
+                <Stack.Screen name="Mimo" component={MimoScreen} />
               </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="auto" />
