@@ -21,6 +21,27 @@ const DETECTIVE_OBJECTS: HiddenObjectItem[] = [
     { id: 'hat', left: 61.71, top: 43.07, width: 15.82, height: 9.04, icon: require('../../assets/missions/detective/icons/hat.jpg'), cover: require('../../assets/missions/detective/covers/hat.jpg'), labelAr: 'القبعة', labelEn: 'Hat' },
 ];
 
+const DETECTIVE_OBJECTS_L2: HiddenObjectItem[] = [
+    { id: 'quill', left: 5.8, top: 70.83, width: 9.49, height: 5.42, icon: require('../../assets/missions/detective/icons/quill.jpg'), cover: require('../../assets/missions/detective/covers2/quill.jpg'), labelAr: 'ريشة الكتابة', labelEn: 'Quill' },
+    { id: 'pen', left: 29.85, top: 71.31, width: 7.91, height: 4.52, icon: require('../../assets/missions/detective/icons/pen.jpg'), cover: require('../../assets/missions/detective/covers2/pen.jpg'), labelAr: 'القلم', labelEn: 'Pen' },
+    { id: 'coin', left: 54.11, top: 71.91, width: 5.8, height: 3.32, icon: require('../../assets/missions/detective/icons/coin.jpg'), cover: require('../../assets/missions/detective/covers2/coin.jpg'), labelAr: 'العملة', labelEn: 'Coin' },
+    { id: 'envelope', left: 75.95, top: 71.13, width: 8.44, height: 4.82, icon: require('../../assets/missions/detective/icons/envelope.jpg'), cover: require('../../assets/missions/detective/covers2/envelope.jpg'), labelAr: 'الظرف', labelEn: 'Envelope' },
+    { id: 'glasses', left: 3.69, top: 76.85, width: 9.49, height: 5.42, icon: require('../../assets/missions/detective/icons/glasses.jpg'), cover: require('../../assets/missions/detective/covers2/glasses.jpg'), labelAr: 'النظارة', labelEn: 'Glasses' },
+    { id: 'cards', left: 27.22, top: 77.03, width: 8.97, height: 5.12, icon: require('../../assets/missions/detective/icons/cards.jpg'), cover: require('../../assets/missions/detective/covers2/cards.jpg'), labelAr: 'أوراق اللعب', labelEn: 'Playing cards' },
+    { id: 'inkwell', left: 51.16, top: 77.46, width: 7.38, height: 4.22, icon: require('../../assets/missions/detective/icons/inkwell.jpg'), cover: require('../../assets/missions/detective/covers2/inkwell.jpg'), labelAr: 'دواة الحبر', labelEn: 'Inkwell' },
+    { id: 'chesspiece', left: 74.68, top: 77.64, width: 6.86, height: 3.92, icon: require('../../assets/missions/detective/icons/chesspiece.jpg'), cover: require('../../assets/missions/detective/covers2/chesspiece.jpg'), labelAr: 'قطعة الشطرنج', labelEn: 'Chess piece' },
+    { id: 'compass', left: 11.08, top: 82.88, width: 9.49, height: 5.42, icon: require('../../assets/missions/detective/icons/compass.jpg'), cover: require('../../assets/missions/detective/covers2/compass.jpg'), labelAr: 'البوصلة', labelEn: 'Compass' },
+    { id: 'candle', left: 40.61, top: 83.48, width: 7.38, height: 4.22, icon: require('../../assets/missions/detective/icons/candle.jpg'), cover: require('../../assets/missions/detective/covers2/candle.jpg'), labelAr: 'الشمعة', labelEn: 'Candle' },
+    { id: 'bell', left: 68.35, top: 83.06, width: 8.97, height: 5.12, icon: require('../../assets/missions/detective/icons/bell.jpg'), cover: require('../../assets/missions/detective/covers2/bell.jpg'), labelAr: 'الجرس', labelEn: 'Bell' },
+    { id: 'toycar', left: 19.51, top: 87.7, width: 13.71, height: 7.84, icon: require('../../assets/missions/detective/icons/toycar.jpg'), cover: require('../../assets/missions/detective/covers2/toycar.jpg'), labelAr: 'سيارة اللعبة', labelEn: 'Toy car' },
+    { id: 'coffee', left: 57.49, top: 88.31, width: 11.6, height: 6.63, icon: require('../../assets/missions/detective/icons/coffee.jpg'), cover: require('../../assets/missions/detective/covers2/coffee.jpg'), labelAr: 'فنجان القهوة', labelEn: 'Coffee cup' },
+    { id: 'notebook', left: 31.96, top: 53.53, width: 10.02, height: 5.73, icon: require('../../assets/missions/detective/icons/notebook.jpg'), cover: require('../../assets/missions/detective/covers2/notebook.jpg'), labelAr: 'دفتر الملاحظات', labelEn: 'Notebook' },
+    { id: 'camera', left: 49.58, top: 53.35, width: 10.55, height: 6.03, icon: require('../../assets/missions/detective/icons/camera.jpg'), cover: require('../../assets/missions/detective/covers2/camera.jpg'), labelAr: 'الكاميرا', labelEn: 'Camera' },
+    { id: 'magnifier', left: 35.34, top: 34.96, width: 9.49, height: 5.42, icon: require('../../assets/missions/detective/icons/magnifier.jpg'), cover: require('../../assets/missions/detective/covers2/magnifier.jpg'), labelAr: 'المكبرة', labelEn: 'Magnifying glass' },
+    { id: 'clock', left: 54.85, top: 35.26, width: 8.44, height: 4.82, icon: require('../../assets/missions/detective/icons/clock.jpg'), cover: require('../../assets/missions/detective/covers2/clock.jpg'), labelAr: 'الساعة', labelEn: 'Clock' },
+    { id: 'hat', left: 73.84, top: 63.59, width: 11.6, height: 6.63, icon: require('../../assets/missions/detective/icons/hat.jpg'), cover: require('../../assets/missions/detective/covers2/hat.jpg'), labelAr: 'القبعة', labelEn: 'Hat' },
+];
+
 export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level1',
@@ -38,15 +59,15 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level2',
     number: 2,
-    image: require('../../assets/missions/detective/hidden_scene1_full.jpg'),
-    imageRatio: 948 / 1660,
+    image: require('../../assets/missions/detective/hidden_scene2_full.jpg'),
+    imageRatio: 948 / 1659,
     characterId: 'alaa',
-    promptAr: 'المستوى 2: دور على الأغراض المطلوبة في مكتب المحقق! 🔍',
-    promptEn: "Level 2: Find the listed objects in the detective's study! 🔍",
+    promptAr: 'المستوى 2: دور على الأغراض المطلوبة بزاوية الحي! 🔍',
+    promptEn: 'Level 2: Find the listed objects around the street corner! 🔍',
     lives: 3,
     hints: 3,
     targetIds: ['cards', 'compass', 'coin', 'candle'],
-    objects: DETECTIVE_OBJECTS,
+    objects: DETECTIVE_OBJECTS_L2,
   },
   {
     id: 'level3',
