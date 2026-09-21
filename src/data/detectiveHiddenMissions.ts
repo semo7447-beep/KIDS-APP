@@ -1,6 +1,8 @@
 import { HiddenObjectMission, HiddenObjectItem } from '../types/hiddenObject';
 
 const DETECTIVE_MUSIC = require('../../assets/audio/background_music.mp3');
+const DETECTIVE_SFX_CORRECT = require('../../assets/audio/correct_object.mp3');
+const DETECTIVE_SFX_WRONG = require('../../assets/audio/wrong_tap.mp3');
 
 const DETECTIVE_OBJECTS: HiddenObjectItem[] = [
     { id: 'magnifyingGlass', left: 8.2, top: 45.8, width: 21.5, height: 4.7, labelAr: 'العدسة المكبرة', labelEn: 'Magnifying Glass' },
@@ -92,6 +94,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level1',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 1,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -107,6 +111,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level2',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 2,
     image: require('../../assets/missions/detective/hidden_scene2_full.jpg'),
     imageRatio: 1024 / 1536,
@@ -121,6 +127,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level3',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 3,
     image: require('../../assets/missions/detective/hidden_scene3_full.jpg'),
     imageRatio: 1024 / 1536,
@@ -135,6 +143,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level4',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 4,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -150,6 +160,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level5',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 5,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -165,6 +177,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level6',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 6,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -180,6 +194,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level7',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 7,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -195,6 +211,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level8',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 8,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -210,6 +228,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level9',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 9,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -225,6 +245,8 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level10',
     music: DETECTIVE_MUSIC,
+    sfxCorrect: DETECTIVE_SFX_CORRECT,
+    sfxWrong: DETECTIVE_SFX_WRONG,
     number: 10,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
