@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
 import { Animated, Image, LayoutChangeEvent, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import * as Speech from 'expo-speech';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
 import { HiddenObjectItem, HiddenObjectMission } from '../types/hiddenObject';
@@ -60,21 +59,21 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
   const hintPulse = useRef(new Animated.Value(0)).current;
   const hintLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const verticalScrollRef = useRef<ScrollView>(null);
-  const horizontalScrollRef = useRef<ScrollView>(null);
 
   const baseHeight = baseWidth ? baseWidth / mission.imageRatio : 0;
   const displayWidth = baseWidth * scale;
   const displayHeight = baseHeight * scale;
 
+  const baseWidthRef = useRef(0);
+  const viewportHRef = useRef(0);
   const onSceneOuterLayout = (e: LayoutChangeEvent) => {
-    if (!baseWidth) setBaseWidth(e.nativeEvent.layout.width);
-    setViewportH(e.nativeEvent.layout.height);
-  };
-
-  const speak = (text: string) => {
-    Speech.stop();
-    Speech.speak(text, { language: lang === 'ar' ? 'ar-SA' : 'en-US', pitch: 1.1, rate: 0.9 });
+    const { width, height } = e.nativeEvent.layout;
+    if (!baseWidth) {
+      setBaseWidth(width);
+      baseWidthRef.current = width;
+    }
+    setViewportH(height);
+    viewportHRef.current = height;
   };
 
   const scaleRef = useRef(1);
@@ -84,29 +83,69 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
     setScale(v);
   };
 
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const panXRef = useRef(0);
+  const panYRef = useRef(0);
+  const setPanBoth = (x: number, y: number) => {
+    panXRef.current = x;
+    panYRef.current = y;
+    setPanX(x);
+    setPanY(y);
+  };
+
+  const clampPan = (x: number, y: number, s: number) => {
+    const dW = baseWidthRef.current * s;
+    const dH = (baseWidthRef.current / mission.imageRatio) * s;
+    const minX = Math.min(0, baseWidthRef.current - dW);
+    const minY = Math.min(0, viewportHRef.current - dH);
+    return { x: Math.max(minX, Math.min(0, x)), y: Math.max(minY, Math.min(0, y)) };
+  };
+
   const pinchStartDist = useRef<number | null>(null);
+  const gestureStartPan = useRef({ x: 0, y: 0 });
+  const gestureStartTouch = useRef({ x: 0, y: 0 });
   const touchDist = (touches: { pageX: number; pageY: number }[]) => {
     const dx = touches[0].pageX - touches[1].pageX;
     const dy = touches[0].pageY - touches[1].pageY;
     return Math.sqrt(dx * dx + dy * dy);
   };
+  const touchMid = (touches: { pageX: number; pageY: number }[]) => ({
+    x: (touches[0].pageX + touches[1].pageX) / 2,
+    y: (touches[0].pageY + touches[1].pageY) / 2,
+  });
   const pinchResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponderCapture: (evt) => evt.nativeEvent.touches.length === 2,
       onMoveShouldSetPanResponderCapture: (evt) => evt.nativeEvent.touches.length === 2,
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gesture) => {
+        if (evt.nativeEvent.touches.length === 2) return true;
+        return scaleRef.current > 1 && (Math.abs(gesture.dx) > 8 || Math.abs(gesture.dy) > 8);
+      },
       onPanResponderGrant: (evt) => {
         const touches = evt.nativeEvent.touches;
+        gestureStartPan.current = { x: panXRef.current, y: panYRef.current };
         if (touches.length === 2) {
           pinchStartDist.current = touchDist(touches as any);
           pinchBaseScale.current = scaleRef.current;
+          gestureStartTouch.current = touchMid(touches as any);
         }
       },
-      onPanResponderMove: (evt) => {
+      onPanResponderMove: (evt, gesture) => {
         const touches = evt.nativeEvent.touches;
         if (touches.length === 2 && pinchStartDist.current) {
           const ratio = touchDist(touches as any) / pinchStartDist.current;
-          const next = pinchBaseScale.current * ratio;
-          setScaleBoth(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next)));
+          const nextScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchBaseScale.current * ratio));
+          const mid = touchMid(touches as any);
+          const dx = mid.x - gestureStartTouch.current.x;
+          const dy = mid.y - gestureStartTouch.current.y;
+          const { x, y } = clampPan(gestureStartPan.current.x + dx, gestureStartPan.current.y + dy, nextScale);
+          setScaleBoth(nextScale);
+          setPanBoth(x, y);
+        } else if (touches.length === 1 && scaleRef.current > 1) {
+          const { x, y } = clampPan(gestureStartPan.current.x + gesture.dx, gestureStartPan.current.y + gesture.dy, scaleRef.current);
+          setPanBoth(x, y);
         }
       },
       onPanResponderRelease: () => {
@@ -160,7 +199,6 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
       playPop();
 
       if (next.size === mission.targetIds.length) {
-        speak(lang === 'ar' ? 'أحسنت! لقيت كل الأدلة!' : 'Great job! You found all the clues!');
         setTimeout(() => {
           setElapsed(Math.round((Date.now() - startTimeRef.current) / 1000));
           setShowWin(true);
@@ -208,16 +246,12 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
       const dH = baseHeight * targetScale;
       const cx = (obj.left / 100) * dW + ((obj.width / 100) * dW) / 2;
       const cy = (obj.top / 100) * dH + ((obj.height / 100) * dH) / 2;
-      const scrollX = Math.max(0, Math.min(dW - baseWidth, cx - baseWidth / 2));
-      const scrollY = Math.max(0, Math.min(dH - viewportH, cy - viewportH / 2));
-      if (targetScale !== scaleRef.current) {
-        pinchBaseScale.current = targetScale;
-        setScaleBoth(targetScale);
-      }
-      setTimeout(() => {
-        horizontalScrollRef.current?.scrollTo({ x: scrollX, animated: true });
-        verticalScrollRef.current?.scrollTo({ y: scrollY, animated: true });
-      }, 80);
+      const desiredX = -(cx - baseWidth / 2);
+      const desiredY = -(cy - viewportH / 2);
+      const { x, y } = clampPan(desiredX, desiredY, targetScale);
+      pinchBaseScale.current = targetScale;
+      setScaleBoth(targetScale);
+      setPanBoth(x, y);
     }
   };
 
@@ -229,6 +263,7 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
     setHintedId(null);
     setScaleBoth(1);
     pinchBaseScale.current = 1;
+    setPanBoth(0, 0);
     startTimeRef.current = Date.now();
     setShowWin(false);
     setShowLose(false);
@@ -282,18 +317,9 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
         })}
       </ScrollView>
 
-      <View style={styles.sceneOuter} onLayout={onSceneOuterLayout}>
-        <ScrollView ref={verticalScrollRef} contentContainerStyle={styles.sceneScrollV}>
-          <ScrollView
-            ref={horizontalScrollRef}
-            horizontal
-            scrollEnabled={scale > 1}
-            contentContainerStyle={displayWidth ? { width: displayWidth } : styles.sceneScrollH}
-          >
-            <View
-              {...pinchResponder.panHandlers}
-              style={[styles.imageWrap, { width: displayWidth || '100%', height: displayHeight || 1 }]}
-            >
+      <View style={styles.sceneOuter} onLayout={onSceneOuterLayout} {...pinchResponder.panHandlers}>
+        <View style={{ transform: [{ translateX: panX }, { translateY: panY }] }}>
+          <View style={[styles.imageWrap, { width: displayWidth || '100%', height: displayHeight || 1 }]}>
                 {baseWidth ? (
                   <>
                     <Image source={mission.image} style={styles.missionImage} resizeMode="cover" />
@@ -358,9 +384,8 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
                     ) : null}
                   </>
                 ) : null}
-            </View>
-          </ScrollView>
-        </ScrollView>
+          </View>
+        </View>
       </View>
 
       {showWin ? (
@@ -452,9 +477,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checklistCheck: { color: palette.white, fontWeight: '900', fontSize: 22 },
-  sceneOuter: { flex: 1, position: 'relative' },
-  sceneScrollV: { flexGrow: 1 },
-  sceneScrollH: { flexGrow: 1, width: '100%' },
+  sceneOuter: { flex: 1, position: 'relative', overflow: 'hidden', borderRadius: 16 },
   imageWrap: { position: 'relative', overflow: 'hidden', borderRadius: 16 },
   missionImage: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   hitZone: { position: 'absolute' },
