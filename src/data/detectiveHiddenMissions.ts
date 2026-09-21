@@ -1,5 +1,7 @@
 import { HiddenObjectMission, HiddenObjectItem } from '../types/hiddenObject';
 
+const DETECTIVE_MUSIC = require('../../assets/audio/background_music.mp3');
+
 const DETECTIVE_OBJECTS: HiddenObjectItem[] = [
     { id: 'magnifyingGlass', left: 8.2, top: 45.8, width: 21.5, height: 4.7, labelAr: 'العدسة المكبرة', labelEn: 'Magnifying Glass' },
     { id: 'coin', left: 41.6, top: 52.5, width: 5.7, height: 2.9, labelAr: 'العملة', labelEn: 'Coin' },
@@ -89,6 +91,7 @@ const DETECTIVE_OBJECTS_L3: HiddenObjectItem[] = [
 export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   {
     id: 'level1',
+    music: DETECTIVE_MUSIC,
     number: 1,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -103,6 +106,7 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   },
   {
     id: 'level2',
+    music: DETECTIVE_MUSIC,
     number: 2,
     image: require('../../assets/missions/detective/hidden_scene2_full.jpg'),
     imageRatio: 1024 / 1536,
@@ -116,6 +120,7 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   },
   {
     id: 'level3',
+    music: DETECTIVE_MUSIC,
     number: 3,
     image: require('../../assets/missions/detective/hidden_scene3_full.jpg'),
     imageRatio: 1024 / 1536,
@@ -129,6 +134,7 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   },
   {
     id: 'level4',
+    music: DETECTIVE_MUSIC,
     number: 4,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -143,6 +149,7 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   },
   {
     id: 'level5',
+    music: DETECTIVE_MUSIC,
     number: 5,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -157,6 +164,7 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   },
   {
     id: 'level6',
+    music: DETECTIVE_MUSIC,
     number: 6,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -171,6 +179,7 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   },
   {
     id: 'level7',
+    music: DETECTIVE_MUSIC,
     number: 7,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -185,6 +194,7 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   },
   {
     id: 'level8',
+    music: DETECTIVE_MUSIC,
     number: 8,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -199,6 +209,7 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   },
   {
     id: 'level9',
+    music: DETECTIVE_MUSIC,
     number: 9,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
@@ -213,6 +224,7 @@ export const DETECTIVE_HIDDEN_MISSIONS: HiddenObjectMission[] = [
   },
   {
     id: 'level10',
+    music: DETECTIVE_MUSIC,
     number: 10,
     image: require('../../assets/missions/detective/hidden_scene1_full.png'),
     emptyImage: require('../../assets/missions/detective/hidden_scene1_empty.png'),
