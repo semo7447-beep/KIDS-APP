@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Animated, Image, LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { PinchGestureHandler, PinchGestureHandlerGestureEvent, PinchGestureHandlerStateChangeEvent, State } from 'react-native-gesture-handler';
+import { Animated, Image, LayoutChangeEvent, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Speech from 'expo-speech';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
@@ -84,15 +83,42 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
     scaleRef.current = v;
     setScale(v);
   };
-  const onPinchEvent = (evt: PinchGestureHandlerGestureEvent) => {
-    const next = pinchBaseScale.current * evt.nativeEvent.scale;
-    setScaleBoth(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next)));
+
+  const pinchStartDist = useRef<number | null>(null);
+  const touchDist = (touches: { pageX: number; pageY: number }[]) => {
+    const dx = touches[0].pageX - touches[1].pageX;
+    const dy = touches[0].pageY - touches[1].pageY;
+    return Math.sqrt(dx * dx + dy * dy);
   };
-  const onPinchStateChange = (evt: PinchGestureHandlerStateChangeEvent) => {
-    if (evt.nativeEvent.oldState === State.ACTIVE) {
-      pinchBaseScale.current = scaleRef.current;
-    }
-  };
+  const pinchResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponderCapture: (evt) => evt.nativeEvent.touches.length === 2,
+      onMoveShouldSetPanResponderCapture: (evt) => evt.nativeEvent.touches.length === 2,
+      onPanResponderGrant: (evt) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length === 2) {
+          pinchStartDist.current = touchDist(touches as any);
+          pinchBaseScale.current = scaleRef.current;
+        }
+      },
+      onPanResponderMove: (evt) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length === 2 && pinchStartDist.current) {
+          const ratio = touchDist(touches as any) / pinchStartDist.current;
+          const next = pinchBaseScale.current * ratio;
+          setScaleBoth(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next)));
+        }
+      },
+      onPanResponderRelease: () => {
+        pinchStartDist.current = null;
+        pinchBaseScale.current = scaleRef.current;
+      },
+      onPanResponderTerminate: () => {
+        pinchStartDist.current = null;
+        pinchBaseScale.current = scaleRef.current;
+      },
+    })
+  ).current;
 
   const playPop = () => {
     popScale.setValue(0.5);
@@ -264,8 +290,10 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
             scrollEnabled={scale > 1}
             contentContainerStyle={displayWidth ? { width: displayWidth } : styles.sceneScrollH}
           >
-            <PinchGestureHandler onGestureEvent={onPinchEvent} onHandlerStateChange={onPinchStateChange}>
-              <View style={[styles.imageWrap, { width: displayWidth || '100%', height: displayHeight || 1 }]}>
+            <View
+              {...pinchResponder.panHandlers}
+              style={[styles.imageWrap, { width: displayWidth || '100%', height: displayHeight || 1 }]}
+            >
                 {baseWidth ? (
                   <>
                     <Image source={mission.image} style={styles.missionImage} resizeMode="cover" />
@@ -330,8 +358,7 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
                     ) : null}
                   </>
                 ) : null}
-              </View>
-            </PinchGestureHandler>
+            </View>
           </ScrollView>
         </ScrollView>
       </View>
