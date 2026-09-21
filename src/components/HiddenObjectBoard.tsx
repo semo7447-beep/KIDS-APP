@@ -1,9 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, LayoutChangeEvent, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
 import { HiddenObjectItem, HiddenObjectMission } from '../types/hiddenObject';
 import { Zone } from '../types/mission';
+import { playMusic, playSfx, stopMusic } from '../utils/audioManager';
 import CharacterBubble from './CharacterBubble';
 
 const ZOOM_MIN = 1;
@@ -80,6 +81,11 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
   const [hintSequenceActive, setHintSequenceActive] = useState(false);
   const [hintAutoTargetId, setHintAutoTargetId] = useState<string | null>(null);
   const startTimeRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (mission.music) playMusic(mission.music);
+    return () => stopMusic();
+  }, [mission.music]);
 
   const popScale = useRef(new Animated.Value(0.5)).current;
   const popOpacity = useRef(new Animated.Value(1)).current;
@@ -265,6 +271,7 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
       Animated.delay(680),
       Animated.timing(opacityV, { toValue: 0, duration: 450, useNativeDriver: true }),
     ]).start(() => setWrongMarks((prev) => prev.filter((m) => m.key !== key)));
+    if (mission.sfxWrong) playSfx(mission.sfxWrong);
 
     setMistakes((m) => m + 1);
     setLives((prevLives) => {
@@ -293,6 +300,7 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
     playPop();
     playFoundText(zoneCenterX, zoneCenterY - 30);
     playSparkles(zoneCenterX, zoneCenterY);
+    if (mission.sfxCorrect) playSfx(mission.sfxCorrect);
   };
 
   const onTapObject = (obj: HiddenObjectItem) => {
@@ -376,6 +384,7 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
       });
     });
 
+    if (mission.sfxHint) playSfx(mission.sfxHint);
     await new Promise((r) => setTimeout(r, 450));
 
     await new Promise<void>((resolve) => {

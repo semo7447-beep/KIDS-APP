@@ -27,4 +27,10 @@ export type HiddenObjectMission = {
   targetIds: string[];
   lives: number;
   hints: number;
+  // Optional audio. Left unset until real files are supplied - the board no-ops
+  // when these are missing rather than requiring placeholder assets.
+  music?: ReturnType<typeof require>;
+  sfxCorrect?: ReturnType<typeof require>;
+  sfxWrong?: ReturnType<typeof require>;
+  sfxHint?: ReturnType<typeof require>;
 };
