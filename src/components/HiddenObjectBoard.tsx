@@ -18,6 +18,28 @@ function zoneStyle(zone: Zone) {
   };
 }
 
+// Positions a full source image (via percentage-based zone coords) so that only the
+// zone's region fills a boxSize x boxSize square, cropped/centered like resizeMode="cover".
+// Avoids needing any pre-cropped per-object icon file.
+function spriteCoverStyle(zone: Zone, imageRatio: number, boxSize: number) {
+  const natW = 1000;
+  const natH = natW / imageRatio;
+  const zoneWpx = (zone.width / 100) * natW;
+  const zoneHpx = (zone.height / 100) * natH;
+  const scale = Math.max(boxSize / zoneWpx, boxSize / zoneHpx);
+  const imgW = natW * scale;
+  const imgH = natH * scale;
+  const zoneCenterXpx = (zone.left / 100) * natW * scale + (zoneWpx * scale) / 2;
+  const zoneCenterYpx = (zone.top / 100) * natH * scale + (zoneHpx * scale) / 2;
+  return {
+    position: 'absolute' as const,
+    width: imgW,
+    height: imgH,
+    left: boxSize / 2 - zoneCenterXpx,
+    top: boxSize / 2 - zoneCenterYpx,
+  };
+}
+
 type Props = {
   mission: HiddenObjectMission;
   onSolved: () => void;
@@ -306,7 +328,11 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
           const isFound = foundIds.has(id);
           return (
             <View key={id} style={[styles.checklistItem, isFound ? styles.checklistItemFound : null]}>
-              <Image source={obj.icon} style={styles.checklistIcon} resizeMode="contain" />
+              {mission.emptyImage ? (
+                <Image source={mission.image} style={spriteCoverStyle(obj, mission.imageRatio, 56)} resizeMode="stretch" />
+              ) : (
+                <Image source={obj.icon} style={styles.checklistIcon} resizeMode="contain" />
+              )}
               {isFound ? (
                 <View style={styles.checklistCheckOverlay}>
                   <Text style={styles.checklistCheck}>✓</Text>
@@ -345,7 +371,19 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
                     {mission.objects.map((obj) =>
                       foundIds.has(obj.id) ? (
                         <View key={'found-' + obj.id} pointerEvents="none" style={[styles.foundOverlay, zoneStyle(obj)]}>
-                          {obj.cover ? (
+                          {mission.emptyImage && displayWidth ? (
+                            <Image
+                              source={mission.emptyImage}
+                              resizeMode="cover"
+                              style={{
+                                position: 'absolute',
+                                width: displayWidth,
+                                height: displayHeight,
+                                left: -(obj.left / 100) * displayWidth,
+                                top: -(obj.top / 100) * displayHeight,
+                              }}
+                            />
+                          ) : obj.cover ? (
                             <Image source={obj.cover} style={styles.foundCoverImage} resizeMode="cover" />
                           ) : (
                             <View style={styles.foundTint} />
@@ -379,7 +417,13 @@ export default function HiddenObjectBoard({ mission, onSolved, onPrevious }: Pro
                           { left: pop.x - 48, top: pop.y - 48, opacity: popOpacity, transform: [{ scale: popScale }] },
                         ]}
                       >
-                        <Image source={popObj.icon} style={styles.popIcon} resizeMode="contain" />
+                        {mission.emptyImage ? (
+                          <View style={styles.popIconClip}>
+                            <Image source={mission.image} style={spriteCoverStyle(popObj, mission.imageRatio, 76)} resizeMode="stretch" />
+                          </View>
+                        ) : (
+                          <Image source={popObj.icon} style={styles.popIcon} resizeMode="contain" />
+                        )}
                       </Animated.View>
                     ) : null}
                   </>
@@ -533,6 +577,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   popIcon: { width: '100%', height: '100%' },
+  popIconClip: { width: 76, height: 76, borderRadius: 16, overflow: 'hidden' },
   resultOverlay: {
     position: 'absolute',
     top: 0,
