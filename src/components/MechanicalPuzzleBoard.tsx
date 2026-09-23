@@ -4,7 +4,6 @@ import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
 import { MechanicalPuzzleMission, PuzzleStage } from '../types/mechanicalPuzzle';
-import CharacterBubble from './CharacterBubble';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -240,7 +239,9 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
         </Pressable>
       </View>
 
-      <CharacterBubble characterId={mission.characterId} text={lang === 'ar' ? mission.promptAr : mission.promptEn} />
+      <View style={styles.titlePlaque}>
+        <Text style={styles.titlePlaqueText}>{lang === 'ar' ? mission.promptAr : mission.promptEn}</Text>
+      </View>
 
       {hintText ? (
         <View style={styles.hintBanner}>
@@ -467,6 +468,16 @@ const styles = StyleSheet.create({
   stageDotDone: { backgroundColor: GREEN },
   hintBtn: { backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
   hintBtnText: { fontSize: 14, fontWeight: '900', color: palette.dark },
+  titlePlaque: {
+    backgroundColor: WOOD_DARK,
+    borderWidth: 2,
+    borderColor: BRASS,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  titlePlaqueText: { color: BRASS_LIGHT, fontWeight: '900', fontSize: 14, textAlign: 'center' },
   hintBanner: { backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 12, padding: 10, marginBottom: 10 },
   hintBannerText: { fontSize: 14, fontWeight: '700', color: palette.dark, textAlign: 'center' },
   vault: { flex: 1, backgroundColor: WOOD_DARK, borderRadius: 20, borderWidth: 4, borderColor: BRASS, padding: 14, gap: 14 },
