@@ -1,5 +1,12 @@
 import { MechanicalPuzzleMission } from '../types/mechanicalPuzzle';
 
+const ICON_GEAR = require('../../assets/icons/mechanical/gear.png');
+const ICON_DIAL_FRAME = require('../../assets/icons/mechanical/digit_dial_frame.png');
+const ICON_SLIDER_TRACK = require('../../assets/icons/mechanical/slider_track.png');
+const ICON_SLIDER_BOLT = require('../../assets/icons/mechanical/slider_bolt.png');
+const ICON_CHEST_CLOSED = require('../../assets/icons/mechanical/chest_closed.png');
+const ICON_CHEST_OPEN = require('../../assets/icons/mechanical/chest_open.png');
+
 export const MECHANICAL_PUZZLE_MISSIONS: MechanicalPuzzleMission[] = [
   {
     id: 'mech-level1',
@@ -21,10 +28,32 @@ export const MECHANICAL_PUZZLE_MISSIONS: MechanicalPuzzleMission[] = [
       'Tap the chest to finally open it!',
     ],
     stages: [
-      { kind: 'gear', labelAr: '1. أدر الترس', labelEn: '1. Turn the gear', step: 45, target: 180 },
-      { kind: 'dial', labelAr: '2. اضبط الكود', labelEn: '2. Crack the code', code: [2, 5, 8], requireEngage: true },
-      { kind: 'slider', labelAr: '3. اسحب المزلاج', labelEn: '3. Slide the bolt', step: 25 },
-      { kind: 'chest' },
+      { kind: 'gear', labelAr: '1. أدر الترس', labelEn: '1. Turn the gear', step: 45, target: 180, image: ICON_GEAR },
+      {
+        kind: 'dial',
+        labelAr: '2. اضبط الكود',
+        labelEn: '2. Crack the code',
+        code: [2, 5, 8],
+        requireEngage: true,
+        frameImage: ICON_DIAL_FRAME,
+        frameImageRatio: 1221 / 727,
+        slotCenters: [
+          { left: 27, top: 52 },
+          { left: 49, top: 52 },
+          { left: 71.5, top: 52 },
+        ],
+      },
+      {
+        kind: 'slider',
+        labelAr: '3. اسحب المزلاج',
+        labelEn: '3. Slide the bolt',
+        step: 25,
+        trackImage: ICON_SLIDER_TRACK,
+        trackImageRatio: 1221 / 310,
+        knobImage: ICON_SLIDER_BOLT,
+        knobImageRatio: 1230 / 811,
+      },
+      { kind: 'chest', closedImage: ICON_CHEST_CLOSED, openImage: ICON_CHEST_OPEN },
     ],
   },
   {

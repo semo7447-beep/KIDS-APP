@@ -6,6 +6,8 @@ export type PuzzleStageGear = {
   target: number;
   // Angle the gear starts at (Chronos Corridor's spiral gear starts pre-rotated at 120°).
   startAngle?: number;
+  // Real gear icon to rotate in place of the drawn SVG gear, when supplied.
+  image?: ReturnType<typeof require>;
 };
 
 export type PuzzleStageDial = {
@@ -15,6 +17,11 @@ export type PuzzleStageDial = {
   code: number[];
   // Pygame's level 1 dial needs an explicit ENGAGE tap; level 2's runes auto-check every tap.
   requireEngage: boolean;
+  // Real dial-frame art (the whole multi-cylinder housing) to use as background, with
+  // digit text overlaid at slotCenters, instead of the drawn per-digit boxes.
+  frameImage?: ReturnType<typeof require>;
+  frameImageRatio?: number;
+  slotCenters?: { left: number; top: number }[];
 };
 
 export type PuzzleStageSlider = {
@@ -22,6 +29,11 @@ export type PuzzleStageSlider = {
   labelAr: string;
   labelEn: string;
   step: number;
+  // Real track/knob art to use instead of the drawn bar + circle knob, when supplied.
+  trackImage?: ReturnType<typeof require>;
+  trackImageRatio?: number;
+  knobImage?: ReturnType<typeof require>;
+  knobImageRatio?: number;
 };
 
 export type PuzzleStageLevers = {
@@ -33,6 +45,9 @@ export type PuzzleStageLevers = {
 
 export type PuzzleStageChest = {
   kind: 'chest';
+  // Real closed/open chest art to use instead of the 🔒/📦 emoji, when supplied.
+  closedImage?: ReturnType<typeof require>;
+  openImage?: ReturnType<typeof require>;
 };
 
 // Each slot cycles through `optionCount` planet colors; solved when every slot's

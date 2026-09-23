@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
@@ -260,23 +260,29 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
               <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
                 <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
                 <Pressable onPress={() => onTapGear(i, stage)} disabled={isLocked || isDone} style={styles.gearWrap}>
-                  <Svg width={140} height={140} viewBox="0 0 140 140">
-                    <Circle cx={70} cy={70} r={64} fill="none" stroke={BRASS} strokeWidth={3} />
-                    <Line x1={70} y1={6} x2={70} y2={20} stroke={isDone ? GREEN : RED} strokeWidth={5} strokeLinecap="round" />
-                  </Svg>
-                  <Animated.View style={[styles.gearInner, { transform: [{ rotate: rotateDeg }] }]}>
-                    <Svg width={120} height={120} viewBox="0 0 120 120">
-                      <Circle cx={60} cy={60} r={50} fill={isDone ? GREEN : BRASS} stroke={WOOD_DARK} strokeWidth={3} />
-                      <Circle cx={60} cy={60} r={16} fill={BRASS_LIGHT} />
-                      {Array.from({ length: 8 }, (_, t) => {
-                        const a = (t * Math.PI * 2) / 8;
-                        const cx = 60 + 56 * Math.cos(a);
-                        const cy = 60 + 56 * Math.sin(a);
-                        return <Rect key={t} x={cx - 6} y={cy - 6} width={12} height={12} fill={WOOD_DARK} />;
-                      })}
-                      <Line x1={60} y1={60} x2={60} y2={14} stroke={RED} strokeWidth={4} strokeLinecap="round" />
-                    </Svg>
-                  </Animated.View>
+                  {stage.image ? (
+                    <Animated.Image source={stage.image} style={[styles.gearImage, { transform: [{ rotate: rotateDeg }] }]} resizeMode="contain" />
+                  ) : (
+                    <>
+                      <Svg width={140} height={140} viewBox="0 0 140 140">
+                        <Circle cx={70} cy={70} r={64} fill="none" stroke={BRASS} strokeWidth={3} />
+                        <Line x1={70} y1={6} x2={70} y2={20} stroke={isDone ? GREEN : RED} strokeWidth={5} strokeLinecap="round" />
+                      </Svg>
+                      <Animated.View style={[styles.gearInner, { transform: [{ rotate: rotateDeg }] }]}>
+                        <Svg width={120} height={120} viewBox="0 0 120 120">
+                          <Circle cx={60} cy={60} r={50} fill={isDone ? GREEN : BRASS} stroke={WOOD_DARK} strokeWidth={3} />
+                          <Circle cx={60} cy={60} r={16} fill={BRASS_LIGHT} />
+                          {Array.from({ length: 8 }, (_, t) => {
+                            const a = (t * Math.PI * 2) / 8;
+                            const cx = 60 + 56 * Math.cos(a);
+                            const cy = 60 + 56 * Math.sin(a);
+                            return <Rect key={t} x={cx - 6} y={cy - 6} width={12} height={12} fill={WOOD_DARK} />;
+                          })}
+                          <Line x1={60} y1={60} x2={60} y2={14} stroke={RED} strokeWidth={4} strokeLinecap="round" />
+                        </Svg>
+                      </Animated.View>
+                    </>
+                  )}
                 </Pressable>
                 {i === stageIndex ? <Text style={styles.tapHint}>{lang === 'ar' ? 'اضغط للتدوير' : 'Tap to turn'}</Text> : null}
               </View>
@@ -288,18 +294,37 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
             return (
               <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
                 <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
-                <Animated.View style={[styles.dialRow, { transform: [{ translateX: i === stageIndex ? shakeX : 0 }] }]}>
-                  {digits.map((d, digitIdx) => (
-                    <Pressable
-                      key={digitIdx}
-                      style={[styles.digitBox, isDone ? styles.digitBoxDone : null]}
-                      onPress={() => onTapDigit(i, digitIdx, stage)}
-                      disabled={isLocked || isDone}
-                    >
-                      <Text style={styles.digitText}>{d}</Text>
-                    </Pressable>
-                  ))}
-                </Animated.View>
+                {stage.frameImage && stage.slotCenters ? (
+                  <Animated.View style={{ width: '100%', aspectRatio: stage.frameImageRatio ?? 1, transform: [{ translateX: i === stageIndex ? shakeX : 0 }] }}>
+                    <Image source={stage.frameImage} style={styles.dialFrameImage} resizeMode="contain" />
+                    {digits.map((d, digitIdx) => {
+                      const c = stage.slotCenters![digitIdx];
+                      return (
+                        <Pressable
+                          key={digitIdx}
+                          style={[styles.dialImageSlot, { left: `${c.left}%` as const, top: `${c.top}%` as const }]}
+                          onPress={() => onTapDigit(i, digitIdx, stage)}
+                          disabled={isLocked || isDone}
+                        >
+                          <Text style={[styles.digitImageText, isDone ? { color: GREEN } : null]}>{d}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </Animated.View>
+                ) : (
+                  <Animated.View style={[styles.dialRow, { transform: [{ translateX: i === stageIndex ? shakeX : 0 }] }]}>
+                    {digits.map((d, digitIdx) => (
+                      <Pressable
+                        key={digitIdx}
+                        style={[styles.digitBox, isDone ? styles.digitBoxDone : null]}
+                        onPress={() => onTapDigit(i, digitIdx, stage)}
+                        disabled={isLocked || isDone}
+                      >
+                        <Text style={styles.digitText}>{d}</Text>
+                      </Pressable>
+                    ))}
+                  </Animated.View>
+                )}
                 {i === stageIndex && dialWrong ? (
                   <Text style={styles.wrongText}>{lang === 'ar' ? 'مش هي! حاول تاني' : "Not quite! Try again"}</Text>
                 ) : null}
@@ -320,6 +345,33 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
             const val = sliderValsState[i] ?? 0;
             const width = getSliderAnim(i).interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
             const knobLeft = getSliderAnim(i).interpolate({ inputRange: [0, 100], outputRange: ['0%', '86%'] });
+
+            if (stage.trackImage && stage.knobImage) {
+              const trackRatio = stage.trackImageRatio ?? 1;
+              const knobRatio = stage.knobImageRatio ?? 1;
+              const knobWidthPct = 32.7;
+              const knobHeightPct = (knobWidthPct * trackRatio) / knobRatio;
+              const knobTopPct = (100 - knobHeightPct) / 2;
+              const knobLeftImg = getSliderAnim(i).interpolate({ inputRange: [0, 100], outputRange: ['0%', `${100 - knobWidthPct}%`] });
+              return (
+                <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
+                  <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
+                  <Pressable onPress={() => onTapSlider(i, stage)} disabled={isLocked || isDone} style={{ width: '100%', aspectRatio: trackRatio }}>
+                    <Image source={stage.trackImage} style={styles.sliderTrackImage} resizeMode="stretch" />
+                    <Animated.Image
+                      source={stage.knobImage}
+                      resizeMode="contain"
+                      style={[
+                        styles.sliderKnobImage,
+                        { width: `${knobWidthPct}%`, height: `${knobHeightPct}%`, top: `${knobTopPct}%`, left: knobLeftImg },
+                      ]}
+                    />
+                  </Pressable>
+                  {i === stageIndex ? <Text style={styles.tapHint}>{lang === 'ar' ? 'اضغط للسحب' : 'Tap to slide'}</Text> : null}
+                </View>
+              );
+            }
+
             return (
               <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
                 <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
@@ -438,18 +490,21 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
           }
 
           // chest
+          const opened = i === stageIndex && chestOpen;
           return (
-            <Pressable
-              key={i}
-              onPress={() => onTapChest(i)}
-              disabled={isLocked || (i === stageIndex && chestOpen)}
-              style={[styles.chest, isLocked ? styles.panelLocked : null, i === stageIndex && chestOpen ? styles.chestOpen : null]}
-            >
-              <Text style={styles.chestEmoji}>{i === stageIndex && chestOpen ? '📦' : '🔒'}</Text>
-              <Text style={styles.chestLabel}>
-                {i === stageIndex && chestOpen ? (lang === 'ar' ? 'فتحت!' : 'UNLOCKED!') : lang === 'ar' ? 'مقفل' : 'LOCKED'}
-              </Text>
-            </Pressable>
+              <Pressable
+                key={i}
+                onPress={() => onTapChest(i)}
+                disabled={isLocked || opened}
+                style={[styles.chest, isLocked ? styles.panelLocked : null, opened ? styles.chestOpen : null]}
+              >
+                {stage.closedImage && stage.openImage ? (
+                  <Image source={opened ? stage.openImage : stage.closedImage} style={styles.chestImage} resizeMode="contain" />
+                ) : (
+                  <Text style={styles.chestEmoji}>{opened ? '📦' : '🔒'}</Text>
+                )}
+                <Text style={styles.chestLabel}>{opened ? (lang === 'ar' ? 'فتحت!' : 'UNLOCKED!') : lang === 'ar' ? 'مقفل' : 'LOCKED'}</Text>
+              </Pressable>
           );
         })}
       </View>
@@ -487,11 +542,15 @@ const styles = StyleSheet.create({
   panelLabel: { color: BRASS_LIGHT, fontWeight: '900', fontSize: 14, marginBottom: 8 },
   gearWrap: { width: 140, height: 140, alignItems: 'center', justifyContent: 'center' },
   gearInner: { position: 'absolute', width: 120, height: 120, alignItems: 'center', justifyContent: 'center' },
+  gearImage: { width: 140, height: 140 },
   tapHint: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 6, fontWeight: '700' },
   dialRow: { flexDirection: 'row', gap: 10 },
   digitBox: { width: 48, height: 56, borderRadius: 8, backgroundColor: BRASS, alignItems: 'center', justifyContent: 'center' },
   digitBoxDone: { backgroundColor: CYAN },
   digitText: { fontSize: 26, fontWeight: '900', color: WOOD_DARK },
+  dialFrameImage: { width: '100%', height: '100%' },
+  dialImageSlot: { position: 'absolute', width: 40, height: 40, marginLeft: -20, marginTop: -20, alignItems: 'center', justifyContent: 'center' },
+  digitImageText: { fontSize: 28, fontWeight: '900', color: '#FFD873', textShadowColor: '#000', textShadowRadius: 4, textShadowOffset: { width: 0, height: 1 } },
   wrongText: { color: RED, fontWeight: '800', marginTop: 8, fontSize: 13 },
   engageBtn: { marginTop: 10, backgroundColor: BRASS, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 },
   engageBtnDisabled: { opacity: 0.4 },
@@ -499,6 +558,8 @@ const styles = StyleSheet.create({
   sliderTrack: { width: '100%', height: 44, borderRadius: 22, backgroundColor: WOOD_DARK, overflow: 'hidden', justifyContent: 'center' },
   sliderFill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 22 },
   sliderKnob: { position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: BRASS_LIGHT, borderWidth: 3, borderColor: WOOD_DARK },
+  sliderTrackImage: { width: '100%', height: '100%' },
+  sliderKnobImage: { position: 'absolute' },
   leverRow: { flexDirection: 'row', gap: 24 },
   lever: { width: 56, height: 72, borderRadius: 10, backgroundColor: RED, alignItems: 'center', justifyContent: 'center' },
   leverPulled: { backgroundColor: GREEN },
@@ -515,5 +576,6 @@ const styles = StyleSheet.create({
   chest: { alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: WOOD_LIGHT, borderRadius: 14, borderWidth: 2, borderColor: BRASS },
   chestOpen: { borderColor: GREEN, backgroundColor: 'rgba(46,204,113,0.25)' },
   chestEmoji: { fontSize: 42 },
+  chestImage: { width: 140, height: 120 },
   chestLabel: { color: BRASS_LIGHT, fontWeight: '900', fontSize: 16, marginTop: 6, letterSpacing: 1 },
 });
