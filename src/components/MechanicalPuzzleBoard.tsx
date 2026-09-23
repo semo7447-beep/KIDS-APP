@@ -3,13 +3,14 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
-import { MechanicalPuzzleMission } from '../types/mechanicalPuzzle';
+import { MechanicalPuzzleMission, PuzzleStage } from '../types/mechanicalPuzzle';
 import CharacterBubble from './CharacterBubble';
 
 const WOOD_DARK = '#2D1E14';
 const WOOD_LIGHT = '#5A3C28';
 const BRASS = '#D4AF37';
 const BRASS_LIGHT = '#F0D26E';
+const CYAN = '#34E7E4';
 const GREEN = '#2ECC71';
 const RED = '#E74C3C';
 
@@ -19,21 +20,28 @@ type Props = {
   onPrevious: () => void;
 };
 
-type Stage = 0 | 1 | 2 | 3 | 4;
-
 export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }: Props) {
   const { lang, isRTL } = useLanguage();
-  const [stage, setStage] = useState<Stage>(0);
-  const [gearAngle, setGearAngle] = useState(0);
-  const [dialDigits, setDialDigits] = useState([0, 0, 0]);
-  const [dialWrong, setDialWrong] = useState(false);
-  const [sliderVal, setSliderVal] = useState(0);
+  const stages = mission.stages;
+  const [stageIndex, setStageIndex] = useState(0);
   const [hintsLeft, setHintsLeft] = useState(mission.hints);
   const [hintText, setHintText] = useState<string | null>(null);
-  const gearRotate = useRef(new Animated.Value(0)).current;
-  const sliderAnim = useRef(new Animated.Value(0)).current;
+
+  // Per-stage runtime state, keyed by stage index. Stages don't change within a mounted
+  // instance (the board is remounted via `key={mission.id}` when the mission changes).
+  const gearAngles = useRef<Record<number, number>>({}).current;
+  const gearAnims = useRef<Record<number, Animated.Value>>({}).current;
+  const [dialDigits, setDialDigits] = useState<Record<number, number[]>>(
+    Object.fromEntries(stages.map((s, i) => [i, s.kind === 'dial' ? s.code.map(() => 0) : []]))
+  );
+  const [dialWrong, setDialWrong] = useState(false);
+  const [sliderValsState, setSliderValsState] = useState<Record<number, number>>({});
+  const sliderAnims = useRef<Record<number, Animated.Value>>({}).current;
+  const [leverState, setLeverState] = useState<Record<number, boolean[]>>(
+    Object.fromEntries(stages.map((s, i) => [i, s.kind === 'levers' ? Array(s.count).fill(false) : []]))
+  );
+  const [chestOpen, setChestOpen] = useState(false);
   const shakeAnim = useRef(new Animated.Value(0)).current;
-  const chestGlow = useRef(new Animated.Value(0)).current;
 
   const hints = lang === 'ar' ? mission.hintsAr : mission.hintsEn;
 
@@ -44,36 +52,57 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
     setTimeout(() => setHintText(null), 3500);
   };
 
-  const onTapGear = () => {
-    if (stage !== 0) return;
-    const next = (gearAngle + mission.gearStep) % 360;
-    setGearAngle(next);
-    Animated.timing(gearRotate, {
+  const advanceStage = () => {
+    if (stageIndex >= stages.length - 1) {
+      setTimeout(onSolved, 700);
+    } else {
+      setTimeout(() => setStageIndex((s) => s + 1), 350);
+    }
+  };
+
+  const getGearAnim = (i: number) => {
+    if (!gearAnims[i]) gearAnims[i] = new Animated.Value(0);
+    return gearAnims[i];
+  };
+  const getSliderAnim = (i: number) => {
+    if (!sliderAnims[i]) sliderAnims[i] = new Animated.Value(0);
+    return sliderAnims[i];
+  };
+
+  const onTapGear = (i: number, stage: Extract<PuzzleStage, { kind: 'gear' }>) => {
+    if (i !== stageIndex) return;
+    const cur = gearAngles[i] ?? 0;
+    const next = (cur + stage.step) % 360;
+    gearAngles[i] = next;
+    Animated.timing(getGearAnim(i), {
       toValue: next,
       duration: 260,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-    if (next === mission.gearTarget % 360) {
-      setTimeout(() => setStage(1), 350);
-    }
+    if (next === stage.target % 360) advanceStage();
   };
 
-  const onTapDigit = (i: number) => {
-    if (stage !== 1) return;
+  const onTapDigit = (i: number, digitIdx: number, stage: Extract<PuzzleStage, { kind: 'dial' }>) => {
+    if (i !== stageIndex) return;
     setDialDigits((prev) => {
-      const copy = [...prev];
-      copy[i] = (copy[i] + 1) % 10;
-      return copy;
+      const arr = [...(prev[i] ?? stage.code.map(() => 0))];
+      arr[digitIdx] = (arr[digitIdx] + 1) % 10;
+      const next = { ...prev, [i]: arr };
+      if (!stage.requireEngage && arr.every((d, k) => d === stage.code[k])) {
+        advanceStage();
+      }
+      return next;
     });
     setDialWrong(false);
   };
 
-  const onEngageDial = () => {
-    if (stage !== 1) return;
-    const ok = dialDigits.every((d, i) => d === mission.dialCode[i]);
+  const onEngageDial = (i: number, stage: Extract<PuzzleStage, { kind: 'dial' }>) => {
+    if (i !== stageIndex || !stage.requireEngage) return;
+    const digits = dialDigits[i] ?? [];
+    const ok = digits.every((d, k) => d === stage.code[k]);
     if (ok) {
-      setStage(2);
+      advanceStage();
     } else {
       setDialWrong(true);
       shakeAnim.setValue(0);
@@ -86,32 +115,42 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
     }
   };
 
-  const onTapSlider = () => {
-    if (stage !== 2) return;
-    const next = Math.min(100, sliderVal + mission.sliderStep);
-    setSliderVal(next);
-    Animated.timing(sliderAnim, {
+  const onTapSlider = (i: number, stage: Extract<PuzzleStage, { kind: 'slider' }>) => {
+    if (i !== stageIndex) return;
+    const cur = sliderValsState[i] ?? 0;
+    const next = Math.min(100, cur + stage.step);
+    setSliderValsState((prev) => ({ ...prev, [i]: next }));
+    Animated.timing(getSliderAnim(i), {
       toValue: next,
       duration: 220,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-    if (next === 100) {
-      setTimeout(() => setStage(3), 300);
-    }
+    if (next === 100) advanceStage();
   };
 
-  const onTapChest = () => {
-    if (stage !== 3) return;
-    setStage(4);
-    Animated.timing(chestGlow, { toValue: 1, duration: 500, useNativeDriver: false }).start();
-    setTimeout(onSolved, 1100);
+  const onTapLever = (i: number, leverIdx: number, stage: Extract<PuzzleStage, { kind: 'levers' }>) => {
+    if (i !== stageIndex) return;
+    setLeverState((prev) => {
+      const arr = [...(prev[i] ?? Array(stage.count).fill(false))];
+      arr[leverIdx] = true;
+      const next = { ...prev, [i]: arr };
+      if (arr.every(Boolean)) advanceStage();
+      return next;
+    });
   };
 
-  const gearRotateDeg = gearRotate.interpolate({ inputRange: [0, 360], outputRange: ['0deg', '360deg'] });
+  const onTapChest = (i: number) => {
+    if (i !== stageIndex) return;
+    setChestOpen(true);
+    advanceStage();
+  };
+
   const shakeX = shakeAnim.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] });
-  const sliderWidth = sliderAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
-  const sliderKnobLeft = sliderAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '86%'] });
+  const stageLabel = (stage: PuzzleStage) => {
+    if (stage.kind === 'chest') return lang === 'ar' ? 'الصندوق' : 'The chest';
+    return lang === 'ar' ? stage.labelAr : stage.labelEn;
+  };
 
   return (
     <View style={styles.container}>
@@ -120,11 +159,11 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
           <Text style={styles.iconBtnText}>{isRTL ? '▶' : '◀'}</Text>
         </Pressable>
         <View style={styles.stageDots}>
-          {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={[styles.stageDot, stage > i ? styles.stageDotDone : stage === i ? styles.stageDotActive : null]} />
+          {stages.map((_, i) => (
+            <View key={i} style={[styles.stageDot, stageIndex > i ? styles.stageDotDone : stageIndex === i ? styles.stageDotActive : null]} />
           ))}
         </View>
-        <Pressable style={styles.hintBtn} onPress={() => showHintFor(Math.min(stage, 3))} disabled={hintsLeft <= 0}>
+        <Pressable style={styles.hintBtn} onPress={() => showHintFor(Math.min(stageIndex, hints.length - 1))} disabled={hintsLeft <= 0}>
           <Text style={styles.hintBtnText}>💡 {hintsLeft}</Text>
         </Pressable>
       </View>
@@ -138,62 +177,125 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
       ) : null}
 
       <View style={styles.vault}>
-        {/* Stage 1: star gear */}
-        <View style={[styles.panel, stage > 0 ? styles.panelDone : null]}>
-          <Text style={styles.panelLabel}>{lang === 'ar' ? '1. أدر الترس' : '1. Turn the gear'}</Text>
-          <Pressable onPress={onTapGear} disabled={stage !== 0} style={styles.gearWrap}>
-            <Svg width={140} height={140} viewBox="0 0 140 140">
-              <Circle cx={70} cy={70} r={64} fill="none" stroke={BRASS} strokeWidth={3} />
-              <Line x1={70} y1={6} x2={70} y2={20} stroke={stage > 0 ? GREEN : RED} strokeWidth={5} strokeLinecap="round" />
-            </Svg>
-            <Animated.View style={[styles.gearInner, { transform: [{ rotate: gearRotateDeg }] }]}>
-              <Svg width={120} height={120} viewBox="0 0 120 120">
-                <Circle cx={60} cy={60} r={50} fill={stage > 0 ? GREEN : BRASS} stroke={WOOD_DARK} strokeWidth={3} />
-                <Circle cx={60} cy={60} r={16} fill={BRASS_LIGHT} />
-                {Array.from({ length: 8 }, (_, i) => {
-                  const a = (i * Math.PI * 2) / 8;
-                  const cx = 60 + 56 * Math.cos(a);
-                  const cy = 60 + 56 * Math.sin(a);
-                  return <Rect key={i} x={cx - 6} y={cy - 6} width={12} height={12} fill={WOOD_DARK} />;
-                })}
-                <Line x1={60} y1={60} x2={60} y2={14} stroke={RED} strokeWidth={4} strokeLinecap="round" />
-              </Svg>
-            </Animated.View>
-          </Pressable>
-          {stage === 0 ? <Text style={styles.tapHint}>{lang === 'ar' ? 'اضغط للتدوير' : 'Tap to turn'}</Text> : null}
-        </View>
+        {stages.map((stage, i) => {
+          const isLocked = i > stageIndex;
+          const isDone = i < stageIndex || (i === stageIndex && (stage.kind === 'chest' ? chestOpen : false));
 
-        {/* Stage 2: digit dial */}
-        <View style={[styles.panel, stage < 1 ? styles.panelLocked : null, stage > 1 ? styles.panelDone : null]}>
-          <Text style={styles.panelLabel}>{lang === 'ar' ? '2. اضبط الكود' : '2. Crack the code'}</Text>
-          <Animated.View style={[styles.dialRow, { transform: [{ translateX: shakeX }] }]}>
-            {dialDigits.map((d, i) => (
-              <Pressable key={i} style={[styles.digitBox, stage > 1 ? styles.digitBoxDone : null]} onPress={() => onTapDigit(i)} disabled={stage !== 1}>
-                <Text style={styles.digitText}>{d}</Text>
-              </Pressable>
-            ))}
-          </Animated.View>
-          {dialWrong ? <Text style={styles.wrongText}>{lang === 'ar' ? 'مش هي! حاول تاني' : "Not quite! Try again"}</Text> : null}
-          <Pressable style={[styles.engageBtn, stage !== 1 ? styles.engageBtnDisabled : null]} onPress={onEngageDial} disabled={stage !== 1}>
-            <Text style={styles.engageBtnText}>ENGAGE</Text>
-          </Pressable>
-        </View>
+          if (stage.kind === 'gear') {
+            const rotateDeg = getGearAnim(i).interpolate({ inputRange: [0, 360], outputRange: ['0deg', '360deg'] });
+            return (
+              <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
+                <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
+                <Pressable onPress={() => onTapGear(i, stage)} disabled={isLocked || isDone} style={styles.gearWrap}>
+                  <Svg width={140} height={140} viewBox="0 0 140 140">
+                    <Circle cx={70} cy={70} r={64} fill="none" stroke={BRASS} strokeWidth={3} />
+                    <Line x1={70} y1={6} x2={70} y2={20} stroke={isDone ? GREEN : RED} strokeWidth={5} strokeLinecap="round" />
+                  </Svg>
+                  <Animated.View style={[styles.gearInner, { transform: [{ rotate: rotateDeg }] }]}>
+                    <Svg width={120} height={120} viewBox="0 0 120 120">
+                      <Circle cx={60} cy={60} r={50} fill={isDone ? GREEN : BRASS} stroke={WOOD_DARK} strokeWidth={3} />
+                      <Circle cx={60} cy={60} r={16} fill={BRASS_LIGHT} />
+                      {Array.from({ length: 8 }, (_, t) => {
+                        const a = (t * Math.PI * 2) / 8;
+                        const cx = 60 + 56 * Math.cos(a);
+                        const cy = 60 + 56 * Math.sin(a);
+                        return <Rect key={t} x={cx - 6} y={cy - 6} width={12} height={12} fill={WOOD_DARK} />;
+                      })}
+                      <Line x1={60} y1={60} x2={60} y2={14} stroke={RED} strokeWidth={4} strokeLinecap="round" />
+                    </Svg>
+                  </Animated.View>
+                </Pressable>
+                {i === stageIndex ? <Text style={styles.tapHint}>{lang === 'ar' ? 'اضغط للتدوير' : 'Tap to turn'}</Text> : null}
+              </View>
+            );
+          }
 
-        {/* Stage 3: slider */}
-        <View style={[styles.panel, stage < 2 ? styles.panelLocked : null, stage > 2 ? styles.panelDone : null]}>
-          <Text style={styles.panelLabel}>{lang === 'ar' ? '3. اسحب المزلاج' : '3. Slide the bolt'}</Text>
-          <Pressable onPress={onTapSlider} disabled={stage !== 2} style={styles.sliderTrack}>
-            <Animated.View style={[styles.sliderFill, { width: sliderWidth, backgroundColor: stage > 2 ? GREEN : BRASS }]} />
-            <Animated.View style={[styles.sliderKnob, { left: sliderKnobLeft }]} />
-          </Pressable>
-          {stage === 2 ? <Text style={styles.tapHint}>{lang === 'ar' ? 'اضغط للسحب' : 'Tap to slide'}</Text> : null}
-        </View>
+          if (stage.kind === 'dial') {
+            const digits = dialDigits[i] ?? stage.code.map(() => 0);
+            return (
+              <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
+                <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
+                <Animated.View style={[styles.dialRow, { transform: [{ translateX: i === stageIndex ? shakeX : 0 }] }]}>
+                  {digits.map((d, digitIdx) => (
+                    <Pressable
+                      key={digitIdx}
+                      style={[styles.digitBox, isDone ? styles.digitBoxDone : null]}
+                      onPress={() => onTapDigit(i, digitIdx, stage)}
+                      disabled={isLocked || isDone}
+                    >
+                      <Text style={styles.digitText}>{d}</Text>
+                    </Pressable>
+                  ))}
+                </Animated.View>
+                {i === stageIndex && dialWrong ? (
+                  <Text style={styles.wrongText}>{lang === 'ar' ? 'مش هي! حاول تاني' : "Not quite! Try again"}</Text>
+                ) : null}
+                {stage.requireEngage ? (
+                  <Pressable
+                    style={[styles.engageBtn, isLocked || isDone ? styles.engageBtnDisabled : null]}
+                    onPress={() => onEngageDial(i, stage)}
+                    disabled={isLocked || isDone}
+                  >
+                    <Text style={styles.engageBtnText}>ENGAGE</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            );
+          }
 
-        {/* Stage 4: chest */}
-        <Pressable onPress={onTapChest} disabled={stage !== 3} style={[styles.chest, stage < 3 ? styles.panelLocked : null, stage === 4 ? styles.chestOpen : null]}>
-          <Text style={styles.chestEmoji}>{stage === 4 ? '📦' : '🔒'}</Text>
-          <Text style={styles.chestLabel}>{stage === 4 ? (lang === 'ar' ? 'فتحت!' : 'UNLOCKED!') : lang === 'ar' ? 'مقفل' : 'LOCKED'}</Text>
-        </Pressable>
+          if (stage.kind === 'slider') {
+            const val = sliderValsState[i] ?? 0;
+            const width = getSliderAnim(i).interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
+            const knobLeft = getSliderAnim(i).interpolate({ inputRange: [0, 100], outputRange: ['0%', '86%'] });
+            return (
+              <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
+                <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
+                <Pressable onPress={() => onTapSlider(i, stage)} disabled={isLocked || isDone} style={styles.sliderTrack}>
+                  <Animated.View style={[styles.sliderFill, { width, backgroundColor: val >= 100 ? GREEN : BRASS }]} />
+                  <Animated.View style={[styles.sliderKnob, { left: knobLeft }]} />
+                </Pressable>
+                {i === stageIndex ? <Text style={styles.tapHint}>{lang === 'ar' ? 'اضغط للسحب' : 'Tap to slide'}</Text> : null}
+              </View>
+            );
+          }
+
+          if (stage.kind === 'levers') {
+            const levers = leverState[i] ?? Array(stage.count).fill(false);
+            return (
+              <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
+                <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
+                <View style={styles.leverRow}>
+                  {levers.map((pulled, leverIdx) => (
+                    <Pressable
+                      key={leverIdx}
+                      style={[styles.lever, pulled ? styles.leverPulled : null]}
+                      onPress={() => onTapLever(i, leverIdx, stage)}
+                      disabled={isLocked || isDone || pulled}
+                    >
+                      <Text style={styles.leverEmoji}>🔧</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                {i === stageIndex ? <Text style={styles.tapHint}>{lang === 'ar' ? 'اسحب الرافعتين معًا' : 'Pull both levers'}</Text> : null}
+              </View>
+            );
+          }
+
+          // chest
+          return (
+            <Pressable
+              key={i}
+              onPress={() => onTapChest(i)}
+              disabled={isLocked || (i === stageIndex && chestOpen)}
+              style={[styles.chest, isLocked ? styles.panelLocked : null, i === stageIndex && chestOpen ? styles.chestOpen : null]}
+            >
+              <Text style={styles.chestEmoji}>{i === stageIndex && chestOpen ? '📦' : '🔒'}</Text>
+              <Text style={styles.chestLabel}>
+                {i === stageIndex && chestOpen ? (lang === 'ar' ? 'فتحت!' : 'UNLOCKED!') : lang === 'ar' ? 'مقفل' : 'LOCKED'}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
@@ -222,7 +324,7 @@ const styles = StyleSheet.create({
   tapHint: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 6, fontWeight: '700' },
   dialRow: { flexDirection: 'row', gap: 10 },
   digitBox: { width: 48, height: 56, borderRadius: 8, backgroundColor: BRASS, alignItems: 'center', justifyContent: 'center' },
-  digitBoxDone: { backgroundColor: GREEN },
+  digitBoxDone: { backgroundColor: CYAN },
   digitText: { fontSize: 26, fontWeight: '900', color: WOOD_DARK },
   wrongText: { color: RED, fontWeight: '800', marginTop: 8, fontSize: 13 },
   engageBtn: { marginTop: 10, backgroundColor: BRASS, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 },
@@ -231,6 +333,10 @@ const styles = StyleSheet.create({
   sliderTrack: { width: '100%', height: 44, borderRadius: 22, backgroundColor: WOOD_DARK, overflow: 'hidden', justifyContent: 'center' },
   sliderFill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 22 },
   sliderKnob: { position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: BRASS_LIGHT, borderWidth: 3, borderColor: WOOD_DARK },
+  leverRow: { flexDirection: 'row', gap: 24 },
+  lever: { width: 56, height: 72, borderRadius: 10, backgroundColor: RED, alignItems: 'center', justifyContent: 'center' },
+  leverPulled: { backgroundColor: GREEN },
+  leverEmoji: { fontSize: 26 },
   chest: { alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: WOOD_LIGHT, borderRadius: 14, borderWidth: 2, borderColor: BRASS },
   chestOpen: { borderColor: GREEN, backgroundColor: 'rgba(46,204,113,0.25)' },
   chestEmoji: { fontSize: 42 },

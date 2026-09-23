@@ -20,9 +20,34 @@ export const MECHANICAL_PUZZLE_MISSIONS: MechanicalPuzzleMission[] = [
       'Tap the bolt a few times until it slides all the way right.',
       'Tap the chest to finally open it!',
     ],
-    gearStep: 45,
-    gearTarget: 180,
-    dialCode: [2, 5, 8],
-    sliderStep: 25,
+    stages: [
+      { kind: 'gear', labelAr: '1. أدر الترس', labelEn: '1. Turn the gear', step: 45, target: 180 },
+      { kind: 'dial', labelAr: '2. اضبط الكود', labelEn: '2. Crack the code', code: [2, 5, 8], requireEngage: true },
+      { kind: 'slider', labelAr: '3. اسحب المزلاج', labelEn: '3. Slide the bolt', step: 25 },
+      { kind: 'chest' },
+    ],
+  },
+  {
+    id: 'mech-level2',
+    number: 2,
+    characterId: 'hakeem',
+    promptAr: 'المستوى 2: أدر صمام البخار، افك رموز الألواح، واسحب الرافعتين سوا! 💨',
+    promptEn: "Level 2: Turn the steam valve, crack the rune code, and pull both levers together! 💨",
+    hints: 3,
+    hintsAr: [
+      'أدر صمام البخار العلوي للوصول لضغط الأنابيب المناسب.',
+      'اضبط الأسطوانات السحرية على الرمز السري: 4 - 1 - 9 - 2.',
+      'اسحب الرافعتين الميكانيكيتين السفليتين معًا لفتح الباب الرئيسي!',
+    ],
+    hintsEn: [
+      'Turn the upper steam valve to reach the right pipe pressure.',
+      'Set the rune dials to the secret code: 4 - 1 - 9 - 2.',
+      'Pull both lower mechanical levers together to open the main door!',
+    ],
+    stages: [
+      { kind: 'gear', labelAr: '1. أدر صمام البخار', labelEn: '1. Turn the steam valve', step: 45, target: 180 },
+      { kind: 'dial', labelAr: '2. افك رموز الألواح', labelEn: '2. Crack the rune code', code: [4, 1, 9, 2], requireEngage: false },
+      { kind: 'levers', labelAr: '3. اسحب الرافعتين', labelEn: '3. Pull both levers', count: 2 },
+    ],
   },
 ];

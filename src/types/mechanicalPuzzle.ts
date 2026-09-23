@@ -1,3 +1,40 @@
+export type PuzzleStageGear = {
+  kind: 'gear';
+  labelAr: string;
+  labelEn: string;
+  step: number;
+  target: number;
+};
+
+export type PuzzleStageDial = {
+  kind: 'dial';
+  labelAr: string;
+  labelEn: string;
+  code: number[];
+  // Pygame's level 1 dial needs an explicit ENGAGE tap; level 2's runes auto-check every tap.
+  requireEngage: boolean;
+};
+
+export type PuzzleStageSlider = {
+  kind: 'slider';
+  labelAr: string;
+  labelEn: string;
+  step: number;
+};
+
+export type PuzzleStageLevers = {
+  kind: 'levers';
+  labelAr: string;
+  labelEn: string;
+  count: number;
+};
+
+export type PuzzleStageChest = {
+  kind: 'chest';
+};
+
+export type PuzzleStage = PuzzleStageGear | PuzzleStageDial | PuzzleStageSlider | PuzzleStageLevers | PuzzleStageChest;
+
 export type MechanicalPuzzleMission = {
   id: string;
   number: number;
@@ -7,11 +44,5 @@ export type MechanicalPuzzleMission = {
   hints: number;
   hintsAr: string[];
   hintsEn: string[];
-  // Stage 1: star gear wheel — tap rotates it by gearStep degrees; solved at gearTarget degrees.
-  gearStep: number;
-  gearTarget: number;
-  // Stage 2: 3-digit dial — tap a digit to cycle 0-9; solved when it matches dialCode, confirmed via ENGAGE.
-  dialCode: number[];
-  // Stage 3: sliding bolt — tap adds sliderStep percent; solved at 100.
-  sliderStep: number;
+  stages: PuzzleStage[];
 };
