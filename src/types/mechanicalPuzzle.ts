@@ -1,3 +1,6 @@
+// Percent-based hit region within a mission's full sceneImage.
+export type Hotspot = { left: number; top: number; width: number; height: number };
+
 export type PuzzleStageGear = {
   kind: 'gear';
   labelAr: string;
@@ -8,6 +11,8 @@ export type PuzzleStageGear = {
   startAngle?: number;
   // Real gear icon to rotate in place of the drawn SVG gear, when supplied.
   image?: ReturnType<typeof require>;
+  // Scene mode: tap region over the mission's sceneImage, instead of a dedicated panel.
+  hotspot?: Hotspot;
 };
 
 export type PuzzleStageDial = {
@@ -22,6 +27,9 @@ export type PuzzleStageDial = {
   frameImage?: ReturnType<typeof require>;
   frameImageRatio?: number;
   slotCenters?: { left: number; top: number }[];
+  // Scene mode: one tap point per digit over the sceneImage, plus the ENGAGE button's region.
+  digitHotspots?: { left: number; top: number }[];
+  engageHotspot?: Hotspot;
 };
 
 export type PuzzleStageSlider = {
@@ -34,6 +42,11 @@ export type PuzzleStageSlider = {
   trackImageRatio?: number;
   knobImage?: ReturnType<typeof require>;
   knobImageRatio?: number;
+  // Scene mode: tap region over the sceneImage.
+  hotspot?: Hotspot;
+  // Scene mode: region to briefly glow gold when this stage completes (e.g. the gear
+  // cluster the bolt visually unlocks), purely a visual flourish, no extra game logic.
+  glowHotspot?: Hotspot;
 };
 
 export type PuzzleStageLevers = {
@@ -48,6 +61,8 @@ export type PuzzleStageChest = {
   // Real closed/open chest art to use instead of the 🔒/📦 emoji, when supplied.
   closedImage?: ReturnType<typeof require>;
   openImage?: ReturnType<typeof require>;
+  // Scene mode: tap region over the sceneImage.
+  hotspot?: Hotspot;
 };
 
 // Each slot cycles through `optionCount` planet colors; solved when every slot's
@@ -102,4 +117,8 @@ export type MechanicalPuzzleMission = {
   hintsAr: string[];
   hintsEn: string[];
   stages: PuzzleStage[];
+  // When set, the board renders this full reference scene as the background and places
+  // each stage's hotspot(s) directly over it, instead of the stacked-panel layout.
+  sceneImage?: ReturnType<typeof require>;
+  sceneImageRatio?: number;
 };

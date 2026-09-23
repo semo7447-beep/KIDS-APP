@@ -3,7 +3,7 @@ import { Animated, Easing, Image, Pressable, StyleSheet, Text, View } from 'reac
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
-import { MechanicalPuzzleMission, PuzzleStage } from '../types/mechanicalPuzzle';
+import { Hotspot, MechanicalPuzzleMission, PuzzleStage } from '../types/mechanicalPuzzle';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -53,6 +53,7 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
   const [mazeVals, setMazeVals] = useState<Record<number, number>>({});
   const mazeAnims = useRef<Record<number, Animated.Value>>({}).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
   const hints = lang === 'ar' ? mission.hintsAr : mission.hintsEn;
 
@@ -143,7 +144,15 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-    if (next === 100) advanceStage();
+    if (next === 100) {
+      if (stage.glowHotspot) {
+        Animated.sequence([
+          Animated.timing(glowAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(glowAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+        ]).start();
+      }
+      advanceStage();
+    }
   };
 
   const onTapLever = (i: number, leverIdx: number, stage: Extract<PuzzleStage, { kind: 'levers' }>) => {
@@ -222,6 +231,130 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
     if (stage.kind === 'chest') return lang === 'ar' ? 'الصندوق' : 'The chest';
     return lang === 'ar' ? stage.labelAr : stage.labelEn;
   };
+
+  const pctBox = (h: Hotspot) => ({
+    position: 'absolute' as const,
+    left: `${h.left}%` as const,
+    top: `${h.top}%` as const,
+    width: `${h.width}%` as const,
+    height: `${h.height}%` as const,
+  });
+
+  if (mission.sceneImage) {
+    const glowStage = stages.find((s) => s.kind === 'slider' && s.glowHotspot) as Extract<PuzzleStage, { kind: 'slider' }> | undefined;
+
+    return (
+      <View style={styles.container}>
+        <View style={[styles.sceneWrap, { aspectRatio: mission.sceneImageRatio ?? 1 }]}>
+          <Image source={mission.sceneImage} style={styles.sceneImage} resizeMode="contain" />
+
+          <View style={styles.sceneTopRow}>
+            <Pressable style={styles.iconBtn} onPress={onPrevious}>
+              <Text style={styles.iconBtnText}>{isRTL ? '▶' : '◀'}</Text>
+            </Pressable>
+            <View style={styles.stageDots}>
+              {stages.map((_, i) => (
+                <View key={i} style={[styles.stageDot, stageIndex > i ? styles.stageDotDone : stageIndex === i ? styles.stageDotActive : null]} />
+              ))}
+            </View>
+            <Pressable style={styles.hintBtn} onPress={() => showHintFor(Math.min(stageIndex, hints.length - 1))} disabled={hintsLeft <= 0}>
+              <Text style={styles.hintBtnText}>💡 {hintsLeft}</Text>
+            </Pressable>
+          </View>
+
+          {hintText ? (
+            <View style={styles.sceneHintBanner}>
+              <Text style={styles.hintBannerText}>{hintText}</Text>
+            </View>
+          ) : null}
+
+          {stages.map((stage, i) => {
+            const isActive = i === stageIndex;
+            const isDone = i < stageIndex;
+
+            if (stage.kind === 'gear' && stage.hotspot) {
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => onTapGear(i, stage)}
+                  disabled={!isActive}
+                  style={[pctBox(stage.hotspot), isActive ? styles.sceneHotspotActive : null]}
+                >
+                  {isDone ? <Text style={styles.sceneDoneBadge}>✓</Text> : null}
+                </Pressable>
+              );
+            }
+
+            if (stage.kind === 'dial' && stage.digitHotspots) {
+              const digits = dialDigits[i] ?? stage.code.map(() => 0);
+              return (
+                <React.Fragment key={i}>
+                  {digits.map((d, digitIdx) => {
+                    const c = stage.digitHotspots![digitIdx];
+                    return (
+                      <Pressable
+                        key={digitIdx}
+                        onPress={() => onTapDigit(i, digitIdx, stage)}
+                        disabled={!isActive}
+                        style={[styles.sceneDigitSlot, { left: `${c.left}%` as const, top: `${c.top}%` as const }]}
+                      >
+                        <Text style={[styles.sceneDigitText, isDone ? { color: GREEN } : null]}>{d}</Text>
+                      </Pressable>
+                    );
+                  })}
+                  {stage.engageHotspot ? (
+                    <Pressable
+                      onPress={() => onEngageDial(i, stage)}
+                      disabled={!isActive}
+                      style={[pctBox(stage.engageHotspot), isActive ? styles.sceneHotspotActive : null]}
+                    />
+                  ) : null}
+                  {isActive && dialWrong ? (
+                    <View style={styles.sceneWrongBanner}>
+                      <Text style={styles.wrongText}>{lang === 'ar' ? 'مش هي! حاول تاني' : "Not quite! Try again"}</Text>
+                    </View>
+                  ) : null}
+                </React.Fragment>
+              );
+            }
+
+            if (stage.kind === 'slider' && stage.hotspot) {
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => onTapSlider(i, stage)}
+                  disabled={!isActive}
+                  style={[pctBox(stage.hotspot), isActive ? styles.sceneHotspotActive : null]}
+                >
+                  {isDone ? <Text style={styles.sceneDoneBadge}>✓</Text> : null}
+                </Pressable>
+              );
+            }
+
+            if (stage.kind === 'chest' && stage.hotspot) {
+              const opened = i === stageIndex && chestOpen;
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => onTapChest(i)}
+                  disabled={!isActive || opened}
+                  style={[pctBox(stage.hotspot), isActive && !opened ? styles.sceneHotspotActive : null]}
+                >
+                  {opened ? <Text style={styles.sceneDoneBadge}>✓</Text> : null}
+                </Pressable>
+              );
+            }
+
+            return null;
+          })}
+
+          {glowStage?.glowHotspot ? (
+            <Animated.View pointerEvents="none" style={[pctBox(glowStage.glowHotspot), styles.sceneGlow, { opacity: glowAnim }]} />
+          ) : null}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -578,4 +711,61 @@ const styles = StyleSheet.create({
   chestEmoji: { fontSize: 42 },
   chestImage: { width: 140, height: 120 },
   chestLabel: { color: BRASS_LIGHT, fontWeight: '900', fontSize: 16, marginTop: 6, letterSpacing: 1 },
+  sceneWrap: { width: '100%', position: 'relative', borderRadius: 14, overflow: 'hidden', borderWidth: 3, borderColor: BRASS },
+  sceneImage: { width: '100%', height: '100%' },
+  sceneTopRow: {
+    position: 'absolute',
+    top: 6,
+    left: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sceneHintBanner: {
+    position: 'absolute',
+    top: '6%',
+    left: '10%',
+    width: '80%',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 10,
+    padding: 8,
+  },
+  sceneWrongBanner: {
+    position: 'absolute',
+    top: '43%',
+    left: '25%',
+    width: '50%',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 8,
+    padding: 6,
+    alignItems: 'center',
+  },
+  sceneHotspotActive: { borderWidth: 2, borderColor: 'rgba(255,255,255,0.55)', borderRadius: 8 },
+  sceneDoneBadge: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    backgroundColor: GREEN,
+    color: palette.white,
+    fontWeight: '900',
+    fontSize: 14,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    textAlign: 'center',
+    lineHeight: 22,
+    overflow: 'hidden',
+  },
+  sceneDigitSlot: {
+    position: 'absolute',
+    width: '7%',
+    height: '9%',
+    marginLeft: '-3.5%',
+    marginTop: '-4.5%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sceneDigitText: { fontSize: 18, fontWeight: '900', color: '#FFD873', textShadowColor: '#000', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
+  sceneGlow: { backgroundColor: BRASS_LIGHT, borderRadius: 12 },
 });

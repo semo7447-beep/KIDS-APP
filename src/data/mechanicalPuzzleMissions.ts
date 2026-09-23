@@ -6,6 +6,7 @@ const ICON_SLIDER_TRACK = require('../../assets/icons/mechanical/slider_track.pn
 const ICON_SLIDER_BOLT = require('../../assets/icons/mechanical/slider_bolt.png');
 const ICON_CHEST_CLOSED = require('../../assets/icons/mechanical/chest_closed.png');
 const ICON_CHEST_OPEN = require('../../assets/icons/mechanical/chest_open.png');
+const LEVEL1_SCENE = require('../../assets/missions/mechanical/level1_scene.png');
 
 export const MECHANICAL_PUZZLE_MISSIONS: MechanicalPuzzleMission[] = [
   {
@@ -27,8 +28,18 @@ export const MECHANICAL_PUZZLE_MISSIONS: MechanicalPuzzleMission[] = [
       'Tap the bolt a few times until it slides all the way right.',
       'Tap the chest to finally open it!',
     ],
+    sceneImage: LEVEL1_SCENE,
+    sceneImageRatio: 1376 / 768,
     stages: [
-      { kind: 'gear', labelAr: '1. أدر الترس', labelEn: '1. Turn the gear', step: 45, target: 180, image: ICON_GEAR },
+      {
+        kind: 'gear',
+        labelAr: '1. أدر الترس',
+        labelEn: '1. Turn the gear',
+        step: 45,
+        target: 180,
+        image: ICON_GEAR,
+        hotspot: { left: 17.8, top: 37.8, width: 15.6, height: 27.3 },
+      },
       {
         kind: 'dial',
         labelAr: '2. اضبط الكود',
@@ -42,6 +53,12 @@ export const MECHANICAL_PUZZLE_MISSIONS: MechanicalPuzzleMission[] = [
           { left: 49, top: 52 },
           { left: 71.5, top: 52 },
         ],
+        digitHotspots: [
+          { left: 46.2, top: 33.2 },
+          { left: 50.7, top: 33.2 },
+          { left: 55.2, top: 33.2 },
+        ],
+        engageHotspot: { left: 60.3, top: 37.1, width: 6.2, height: 5.2 },
       },
       {
         kind: 'slider',
@@ -52,8 +69,15 @@ export const MECHANICAL_PUZZLE_MISSIONS: MechanicalPuzzleMission[] = [
         trackImageRatio: 1221 / 310,
         knobImage: ICON_SLIDER_BOLT,
         knobImageRatio: 1230 / 811,
+        hotspot: { left: 43.6, top: 36.5, width: 14.5, height: 6.5 },
+        glowHotspot: { left: 34.2, top: 11.7, width: 13.1, height: 26.0 },
       },
-      { kind: 'chest', closedImage: ICON_CHEST_CLOSED, openImage: ICON_CHEST_OPEN },
+      {
+        kind: 'chest',
+        closedImage: ICON_CHEST_CLOSED,
+        openImage: ICON_CHEST_OPEN,
+        hotspot: { left: 42.9, top: 68.4, width: 17.4, height: 16.9 },
+      },
     ],
   },
   {
