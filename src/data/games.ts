@@ -16,7 +16,7 @@ export type GameCard = {
 
 const CARD_IMAGES: Record<string, ReturnType<typeof require>> = {
   detective: require('../../assets/cards/detective.jpg'),
-  predict: require('../../assets/cards/predict.jpg'),
+  predict: require('../../assets/cards/predict.png'),
   buildworld: require('../../assets/cards/buildworld.jpg'),
   robot: require('../../assets/cards/robot.jpg'),
   secretroom: require('../../assets/cards/secretroom.jpg'),
@@ -31,7 +31,7 @@ const CARD_IMAGES: Record<string, ReturnType<typeof require>> = {
 
 const WORLD_IMAGES: Record<string, ReturnType<typeof require>> = {
   detective: require('../../assets/worlds/detective.jpg'),
-  predict: require('../../assets/worlds/predict.jpg'),
+  predict: require('../../assets/worlds/predict.png'),
   buildworld: require('../../assets/worlds/buildworld.jpg'),
   robot: require('../../assets/worlds/robot.jpg'),
   secretroom: require('../../assets/worlds/secretroom.jpg'),
