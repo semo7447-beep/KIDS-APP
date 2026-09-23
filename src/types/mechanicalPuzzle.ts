@@ -27,8 +27,8 @@ export type PuzzleStageDial = {
   frameImage?: ReturnType<typeof require>;
   frameImageRatio?: number;
   slotCenters?: { left: number; top: number }[];
-  // Scene mode: one tap point per digit over the sceneImage, plus the ENGAGE button's region.
-  digitHotspots?: { left: number; top: number }[];
+  // Scene mode: one tap region per digit over the sceneImage, plus the ENGAGE button's region.
+  digitHotspots?: Hotspot[];
   engageHotspot?: Hotspot;
 };
 
@@ -121,4 +121,10 @@ export type MechanicalPuzzleMission = {
   // each stage's hotspot(s) directly over it, instead of the stacked-panel layout.
   sceneImage?: ReturnType<typeof require>;
   sceneImageRatio?: number;
+  // Scene mode: the artwork's own BACK button and HINTS card become the real controls.
+  // hintCountHotspot / hintLeftHotspot cover the printed "3" and "3 LEFT" with the live count.
+  backHotspot?: Hotspot;
+  hintsHotspot?: Hotspot;
+  hintCountHotspot?: Hotspot;
+  hintLeftHotspot?: Hotspot;
 };

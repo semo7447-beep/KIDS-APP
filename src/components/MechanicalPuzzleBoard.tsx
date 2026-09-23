@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Animated, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import { useLanguage } from '../context/LanguageContext';
 import { palette } from '../theme/colors';
@@ -54,6 +54,15 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
   const mazeAnims = useRef<Record<number, Animated.Value>>({}).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+  const [sceneBox, setSceneBox] = useState<{ w: number; h: number } | null>(null);
+
+  // Fit the whole scene inside the available screen area without cropping (contain).
+  const onSceneScreenLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    const ratio = mission.sceneImageRatio ?? 1;
+    const w = Math.min(width, height * ratio);
+    setSceneBox({ w, h: w / ratio });
+  };
 
   const hints = lang === 'ar' ? mission.hintsAr : mission.hintsEn;
 
@@ -147,7 +156,7 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
     if (next === 100) {
       if (stage.glowHotspot) {
         Animated.sequence([
-          Animated.timing(glowAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(glowAnim, { toValue: 0.45, duration: 300, useNativeDriver: true }),
           Animated.timing(glowAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
         ]).start();
       }
@@ -243,24 +252,40 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
   if (mission.sceneImage) {
     const glowStage = stages.find((s) => s.kind === 'slider' && s.glowHotspot) as Extract<PuzzleStage, { kind: 'slider' }> | undefined;
 
-    return (
-      <View style={styles.container}>
-        <View style={[styles.sceneWrap, { aspectRatio: mission.sceneImageRatio ?? 1 }]}>
-          <Image source={mission.sceneImage} style={styles.sceneImage} resizeMode="contain" />
+    const onHint = () => showHintFor(Math.min(stageIndex, hints.length - 1));
 
-          <View style={styles.sceneTopRow}>
-            <Pressable style={styles.iconBtn} onPress={onPrevious}>
-              <Text style={styles.iconBtnText}>{isRTL ? '▶' : '◀'}</Text>
-            </Pressable>
-            <View style={styles.stageDots}>
-              {stages.map((_, i) => (
-                <View key={i} style={[styles.stageDot, stageIndex > i ? styles.stageDotDone : stageIndex === i ? styles.stageDotActive : null]} />
-              ))}
+    return (
+      <View style={styles.sceneScreen} onLayout={onSceneScreenLayout}>
+        {sceneBox ? (
+        <View style={{ width: sceneBox.w, height: sceneBox.h }}>
+          <Image source={mission.sceneImage} style={styles.sceneImage} resizeMode="stretch" />
+
+          {mission.backHotspot ? (
+            <Pressable onPress={onPrevious} style={pctBox(mission.backHotspot)} />
+          ) : (
+            <View style={styles.sceneTopRow}>
+              <Pressable style={styles.iconBtn} onPress={onPrevious}>
+                <Text style={styles.iconBtnText}>{isRTL ? '▶' : '◀'}</Text>
+              </Pressable>
+              <Pressable style={styles.hintBtn} onPress={onHint} disabled={hintsLeft <= 0}>
+                <Text style={styles.hintBtnText}>💡 {hintsLeft}</Text>
+              </Pressable>
             </View>
-            <Pressable style={styles.hintBtn} onPress={() => showHintFor(Math.min(stageIndex, hints.length - 1))} disabled={hintsLeft <= 0}>
-              <Text style={styles.hintBtnText}>💡 {hintsLeft}</Text>
-            </Pressable>
-          </View>
+          )}
+
+          {mission.hintsHotspot ? <Pressable onPress={onHint} disabled={hintsLeft <= 0} style={pctBox(mission.hintsHotspot)} /> : null}
+          {mission.hintCountHotspot ? (
+            <View pointerEvents="none" style={[pctBox(mission.hintCountHotspot), styles.sceneHintCount]}>
+              <Text style={[styles.sceneHintCountText, { fontSize: sceneBox.w * 0.045 }]}>{hintsLeft}</Text>
+            </View>
+          ) : null}
+          {mission.hintLeftHotspot ? (
+            <View pointerEvents="none" style={[pctBox(mission.hintLeftHotspot), styles.sceneHintLeft]}>
+              <Text numberOfLines={1} style={[styles.sceneHintLeftText, { fontSize: sceneBox.w * 0.02 }]}>
+                {hintsLeft} LEFT
+              </Text>
+            </View>
+          ) : null}
 
           {hintText ? (
             <View style={styles.sceneHintBanner}>
@@ -289,19 +314,16 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
               const digits = dialDigits[i] ?? stage.code.map(() => 0);
               return (
                 <React.Fragment key={i}>
-                  {digits.map((d, digitIdx) => {
-                    const c = stage.digitHotspots![digitIdx];
-                    return (
-                      <Pressable
-                        key={digitIdx}
-                        onPress={() => onTapDigit(i, digitIdx, stage)}
-                        disabled={!isActive}
-                        style={[styles.sceneDigitSlot, { left: `${c.left}%` as const, top: `${c.top}%` as const }]}
-                      >
-                        <Text style={[styles.sceneDigitText, isDone ? { color: GREEN } : null]}>{d}</Text>
-                      </Pressable>
-                    );
-                  })}
+                  {digits.map((d, digitIdx) => (
+                    <Pressable
+                      key={digitIdx}
+                      onPress={() => onTapDigit(i, digitIdx, stage)}
+                      disabled={!isActive}
+                      style={[pctBox(stage.digitHotspots![digitIdx]), styles.sceneDigitSlot]}
+                    >
+                      <Text style={[styles.sceneDigitText, { fontSize: sceneBox.w * 0.045 }, isDone ? { color: GREEN } : null]}>{d}</Text>
+                    </Pressable>
+                  ))}
                   {stage.engageHotspot ? (
                     <Pressable
                       onPress={() => onEngageDial(i, stage)}
@@ -352,6 +374,7 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
             <Animated.View pointerEvents="none" style={[pctBox(glowStage.glowHotspot), styles.sceneGlow, { opacity: glowAnim }]} />
           ) : null}
         </View>
+        ) : null}
       </View>
     );
   }
@@ -711,8 +734,12 @@ const styles = StyleSheet.create({
   chestEmoji: { fontSize: 42 },
   chestImage: { width: 140, height: 120 },
   chestLabel: { color: BRASS_LIGHT, fontWeight: '900', fontSize: 16, marginTop: 6, letterSpacing: 1 },
-  sceneWrap: { width: '100%', position: 'relative', borderRadius: 14, overflow: 'hidden', borderWidth: 3, borderColor: BRASS },
-  sceneImage: { width: '100%', height: '100%' },
+  sceneScreen: { flex: 1, backgroundColor: '#140E09', alignItems: 'center', justifyContent: 'center' },
+  sceneImage: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+  sceneHintCount: { backgroundColor: '#E3C388', alignItems: 'center', justifyContent: 'center' },
+  sceneHintCountText: { fontWeight: '900', color: '#1A120B' },
+  sceneHintLeft: { backgroundColor: '#19140F', alignItems: 'center', justifyContent: 'center' },
+  sceneHintLeftText: { fontWeight: '700', color: '#F0DDB0', letterSpacing: 0.5 },
   sceneTopRow: {
     position: 'absolute',
     top: 6,
@@ -744,7 +771,7 @@ const styles = StyleSheet.create({
   sceneHotspotActive: { borderWidth: 2, borderColor: 'rgba(255,255,255,0.55)', borderRadius: 8 },
   sceneDoneBadge: {
     position: 'absolute',
-    top: -10,
+    bottom: -10,
     right: -10,
     backgroundColor: GREEN,
     color: palette.white,
@@ -757,15 +784,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     overflow: 'hidden',
   },
-  sceneDigitSlot: {
-    position: 'absolute',
-    width: '7%',
-    height: '9%',
-    marginLeft: '-3.5%',
-    marginTop: '-4.5%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sceneDigitText: { fontSize: 18, fontWeight: '900', color: '#FFD873', textShadowColor: '#000', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
+  sceneDigitSlot: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(20,14,9,0.85)', borderRadius: 4 },
+  sceneDigitText: { fontWeight: '900', color: '#FFD873', textShadowColor: '#000', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
   sceneGlow: { backgroundColor: BRASS_LIGHT, borderRadius: 12 },
 });
