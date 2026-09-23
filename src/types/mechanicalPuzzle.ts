@@ -33,7 +33,23 @@ export type PuzzleStageChest = {
   kind: 'chest';
 };
 
-export type PuzzleStage = PuzzleStageGear | PuzzleStageDial | PuzzleStageSlider | PuzzleStageLevers | PuzzleStageChest;
+// Each slot cycles through `optionCount` planet colors; solved when every slot's
+// color index matches `target`.
+export type PuzzleStagePlanets = {
+  kind: 'planets';
+  labelAr: string;
+  labelEn: string;
+  optionCount: number;
+  target: number[];
+};
+
+export type PuzzleStage =
+  | PuzzleStageGear
+  | PuzzleStageDial
+  | PuzzleStageSlider
+  | PuzzleStageLevers
+  | PuzzleStageChest
+  | PuzzleStagePlanets;
 
 export type MechanicalPuzzleMission = {
   id: string;

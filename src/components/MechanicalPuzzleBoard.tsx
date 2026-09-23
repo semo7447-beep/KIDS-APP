@@ -13,6 +13,7 @@ const BRASS_LIGHT = '#F0D26E';
 const CYAN = '#34E7E4';
 const GREEN = '#2ECC71';
 const RED = '#E74C3C';
+const PLANET_COLORS = ['#DC4B37', '#3C82F0', '#C8C8CD', '#DC9650'];
 
 type Props = {
   mission: MechanicalPuzzleMission;
@@ -41,6 +42,9 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
     Object.fromEntries(stages.map((s, i) => [i, s.kind === 'levers' ? Array(s.count).fill(false) : []]))
   );
   const [chestOpen, setChestOpen] = useState(false);
+  const [planetState, setPlanetState] = useState<Record<number, number[]>>(
+    Object.fromEntries(stages.map((s, i) => [i, s.kind === 'planets' ? s.target.map(() => 0) : []]))
+  );
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const hints = lang === 'ar' ? mission.hintsAr : mission.hintsEn;
@@ -136,6 +140,17 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
       arr[leverIdx] = true;
       const next = { ...prev, [i]: arr };
       if (arr.every(Boolean)) advanceStage();
+      return next;
+    });
+  };
+
+  const onTapPlanet = (i: number, slotIdx: number, stage: Extract<PuzzleStage, { kind: 'planets' }>) => {
+    if (i !== stageIndex) return;
+    setPlanetState((prev) => {
+      const arr = [...(prev[i] ?? stage.target.map(() => 0))];
+      arr[slotIdx] = (arr[slotIdx] + 1) % stage.optionCount;
+      const next = { ...prev, [i]: arr };
+      if (arr.every((v, k) => v === stage.target[k])) advanceStage();
       return next;
     });
   };
@@ -261,6 +276,14 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
 
           if (stage.kind === 'levers') {
             const levers = leverState[i] ?? Array(stage.count).fill(false);
+            const leverHint =
+              stage.count > 1
+                ? lang === 'ar'
+                  ? 'اسحب الرافعتين معًا'
+                  : 'Pull both levers'
+                : lang === 'ar'
+                ? 'اسحب الرافعة'
+                : 'Pull the lever';
             return (
               <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
                 <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
@@ -276,7 +299,27 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
                     </Pressable>
                   ))}
                 </View>
-                {i === stageIndex ? <Text style={styles.tapHint}>{lang === 'ar' ? 'اسحب الرافعتين معًا' : 'Pull both levers'}</Text> : null}
+                {i === stageIndex ? <Text style={styles.tapHint}>{leverHint}</Text> : null}
+              </View>
+            );
+          }
+
+          if (stage.kind === 'planets') {
+            const slots = planetState[i] ?? stage.target.map(() => 0);
+            return (
+              <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
+                <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
+                <View style={styles.planetRow}>
+                  {slots.map((v, slotIdx) => (
+                    <Pressable
+                      key={slotIdx}
+                      style={[styles.planetSlot, { backgroundColor: PLANET_COLORS[v % PLANET_COLORS.length] }]}
+                      onPress={() => onTapPlanet(i, slotIdx, stage)}
+                      disabled={isLocked || isDone}
+                    />
+                  ))}
+                </View>
+                {i === stageIndex ? <Text style={styles.tapHint}>{lang === 'ar' ? 'اضغط لتدوير الكوكب' : 'Tap to cycle the planet'}</Text> : null}
               </View>
             );
           }
@@ -337,6 +380,8 @@ const styles = StyleSheet.create({
   lever: { width: 56, height: 72, borderRadius: 10, backgroundColor: RED, alignItems: 'center', justifyContent: 'center' },
   leverPulled: { backgroundColor: GREEN },
   leverEmoji: { fontSize: 26 },
+  planetRow: { flexDirection: 'row', gap: 14 },
+  planetSlot: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, borderColor: BRASS_LIGHT },
   chest: { alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: WOOD_LIGHT, borderRadius: 14, borderWidth: 2, borderColor: BRASS },
   chestOpen: { borderColor: GREEN, backgroundColor: 'rgba(46,204,113,0.25)' },
   chestEmoji: { fontSize: 42 },

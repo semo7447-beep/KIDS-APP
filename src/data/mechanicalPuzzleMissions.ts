@@ -50,4 +50,27 @@ export const MECHANICAL_PUZZLE_MISSIONS: MechanicalPuzzleMission[] = [
       { kind: 'levers', labelAr: '3. اسحب الرافعتين', labelEn: '3. Pull both levers', count: 2 },
     ],
   },
+  {
+    id: 'mech-level3',
+    number: 3,
+    characterId: 'hakeem',
+    promptAr: 'المستوى 3: رتب الكواكب، أدخل رمز النجوم، واسحب الرافعة لتفعيل الجسر السماوي! 🌌',
+    promptEn: 'Level 3: Align the planets, enter the star code, and pull the lever to activate the Celestial Bridge! 🌌',
+    hints: 3,
+    hintsAr: [
+      'حرك الكواكب إلى مواقعها الصحيحة وفق نمط الأبراج.',
+      'أدخل رمز النجوم السماوي: 7 - 3 - 5 - 1.',
+      'اسحب الرافعة البلورية لتفعيل الجسر المعلق!',
+    ],
+    hintsEn: [
+      'Align the planets with their correct zodiac signs.',
+      'Enter the celestial code: 7 - 3 - 5 - 1.',
+      'Pull the crystal lever to activate the Celestial Bridge!',
+    ],
+    stages: [
+      { kind: 'planets', labelAr: '1. رتب الكواكب', labelEn: '1. Align the planets', optionCount: 4, target: [0, 3, 2, 1] },
+      { kind: 'dial', labelAr: '2. أدخل رمز النجوم', labelEn: '2. Enter the star code', code: [7, 3, 5, 1], requireEngage: false },
+      { kind: 'levers', labelAr: '3. اسحب الرافعة', labelEn: '3. Pull the lever', count: 1 },
+    ],
+  },
 ];
