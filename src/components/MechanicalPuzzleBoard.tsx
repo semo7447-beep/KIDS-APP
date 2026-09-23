@@ -6,6 +6,8 @@ import { palette } from '../theme/colors';
 import { MechanicalPuzzleMission, PuzzleStage } from '../types/mechanicalPuzzle';
 import CharacterBubble from './CharacterBubble';
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 const WOOD_DARK = '#2D1E14';
 const WOOD_LIGHT = '#5A3C28';
 const BRASS = '#D4AF37';
@@ -45,6 +47,12 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
   const [planetState, setPlanetState] = useState<Record<number, number[]>>(
     Object.fromEntries(stages.map((s, i) => [i, s.kind === 'planets' ? s.target.map(() => 0) : []]))
   );
+  const [sequenceSlots, setSequenceSlots] = useState<Record<number, (string | null)[]>>(
+    Object.fromEntries(stages.map((s, i) => [i, s.kind === 'sequence' ? s.correctOrder.map(() => null) : []]))
+  );
+  const [sequenceWrong, setSequenceWrong] = useState(false);
+  const [mazeVals, setMazeVals] = useState<Record<number, number>>({});
+  const mazeAnims = useRef<Record<number, Animated.Value>>({}).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const hints = lang === 'ar' ? mission.hintsAr : mission.hintsEn;
@@ -64,27 +72,33 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
     }
   };
 
-  const getGearAnim = (i: number) => {
-    if (!gearAnims[i]) gearAnims[i] = new Animated.Value(0);
+  const getGearAnim = (i: number, startAngle: number) => {
+    if (!gearAnims[i]) gearAnims[i] = new Animated.Value(startAngle);
     return gearAnims[i];
   };
   const getSliderAnim = (i: number) => {
     if (!sliderAnims[i]) sliderAnims[i] = new Animated.Value(0);
     return sliderAnims[i];
   };
+  const getMazeAnim = (i: number, startValue: number) => {
+    if (!mazeAnims[i]) mazeAnims[i] = new Animated.Value(startValue);
+    return mazeAnims[i];
+  };
 
   const onTapGear = (i: number, stage: Extract<PuzzleStage, { kind: 'gear' }>) => {
     if (i !== stageIndex) return;
-    const cur = gearAngles[i] ?? 0;
-    const next = (cur + stage.step) % 360;
+    // Keep an ever-increasing raw angle (no modulo) so the rotation animation always
+    // continues forward instead of snapping backward when it wraps past 360.
+    const cur = gearAngles[i] ?? stage.startAngle ?? 0;
+    const next = cur + stage.step;
     gearAngles[i] = next;
-    Animated.timing(getGearAnim(i), {
+    Animated.timing(getGearAnim(i, stage.startAngle ?? 0), {
       toValue: next,
       duration: 260,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-    if (next === stage.target % 360) advanceStage();
+    if (next % 360 === stage.target % 360) advanceStage();
   };
 
   const onTapDigit = (i: number, digitIdx: number, stage: Extract<PuzzleStage, { kind: 'dial' }>) => {
@@ -155,6 +169,49 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
     });
   };
 
+  const onTapOption = (i: number, optionId: string, stage: Extract<PuzzleStage, { kind: 'sequence' }>) => {
+    if (i !== stageIndex) return;
+    setSequenceSlots((prev) => {
+      const arr = [...(prev[i] ?? stage.correctOrder.map(() => null))];
+      const emptyIdx = arr.findIndex((v) => v === null);
+      if (emptyIdx === -1) return prev;
+      arr[emptyIdx] = optionId;
+      const next = { ...prev, [i]: arr };
+      if (!arr.includes(null)) {
+        if (arr.every((v, k) => v === stage.correctOrder[k])) {
+          advanceStage();
+        } else {
+          setSequenceWrong(true);
+          shakeAnim.setValue(0);
+          Animated.sequence([
+            Animated.timing(shakeAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: -1, duration: 60, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+          ]).start(() => {
+            setSequenceWrong(false);
+            setSequenceSlots((p) => ({ ...p, [i]: stage.correctOrder.map(() => null) }));
+          });
+        }
+      }
+      return next;
+    });
+  };
+
+  const onTapMaze = (i: number, stage: Extract<PuzzleStage, { kind: 'maze' }>) => {
+    if (i !== stageIndex) return;
+    const cur = mazeVals[i] ?? stage.startValue;
+    const next = Math.max(0, cur - stage.step);
+    setMazeVals((prev) => ({ ...prev, [i]: next }));
+    Animated.timing(getMazeAnim(i, stage.startValue), {
+      toValue: next,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    if (next <= stage.target) advanceStage();
+  };
+
   const onTapChest = (i: number) => {
     if (i !== stageIndex) return;
     setChestOpen(true);
@@ -197,7 +254,7 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
           const isDone = i < stageIndex || (i === stageIndex && (stage.kind === 'chest' ? chestOpen : false));
 
           if (stage.kind === 'gear') {
-            const rotateDeg = getGearAnim(i).interpolate({ inputRange: [0, 360], outputRange: ['0deg', '360deg'] });
+            const rotateDeg = getGearAnim(i, stage.startAngle ?? 0).interpolate({ inputRange: [0, 360], outputRange: ['0deg', '360deg'] });
             return (
               <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
                 <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
@@ -324,6 +381,61 @@ export default function MechanicalPuzzleBoard({ mission, onSolved, onPrevious }:
             );
           }
 
+          if (stage.kind === 'sequence') {
+            const slots = sequenceSlots[i] ?? stage.correctOrder.map(() => null);
+            return (
+              <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
+                <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
+                <View style={styles.sequenceOptionsRow}>
+                  {stage.options.map((opt) => (
+                    <Pressable
+                      key={opt.id}
+                      style={styles.sequenceOptionBtn}
+                      onPress={() => onTapOption(i, opt.id, stage)}
+                      disabled={isLocked || isDone}
+                    >
+                      <Text style={styles.sequenceOptionEmoji}>{opt.emoji}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Animated.View style={[styles.sequenceSlotsRow, { transform: [{ translateX: i === stageIndex ? shakeX : 0 }] }]}>
+                  {slots.map((v, slotIdx) => {
+                    const opt = stage.options.find((o) => o.id === v);
+                    return (
+                      <View key={slotIdx} style={[styles.sequenceSlotBox, isDone ? styles.sequenceSlotBoxDone : null]}>
+                        <Text style={styles.sequenceSlotEmoji}>{opt?.emoji ?? ''}</Text>
+                      </View>
+                    );
+                  })}
+                </Animated.View>
+                {i === stageIndex && sequenceWrong ? (
+                  <Text style={styles.wrongText}>{lang === 'ar' ? 'مش هي! حاول تاني' : "Not quite! Try again"}</Text>
+                ) : null}
+              </View>
+            );
+          }
+
+          if (stage.kind === 'maze') {
+            const val = mazeVals[i] ?? stage.startValue;
+            const cx = getMazeAnim(i, stage.startValue).interpolate({ inputRange: [0, stage.startValue], outputRange: [70, 130] });
+            return (
+              <View key={i} style={[styles.panel, isLocked ? styles.panelLocked : null, isDone ? styles.panelDone : null]}>
+                <Text style={styles.panelLabel}>{stageLabel(stage)}</Text>
+                <Pressable onPress={() => onTapMaze(i, stage)} disabled={isLocked || isDone} style={styles.gearWrap}>
+                  <Svg width={140} height={140} viewBox="0 0 140 140">
+                    <Circle cx={70} cy={70} r={60} fill="none" stroke={val <= stage.target ? GREEN : BRASS} strokeWidth={4} />
+                    <Circle cx={70} cy={70} r={40} fill="none" stroke={WOOD_DARK} strokeWidth={2} />
+                    <Circle cx={70} cy={70} r={20} fill="none" stroke={WOOD_DARK} strokeWidth={2} />
+                    <AnimatedCircle cx={cx} cy={70} r={9} fill={CYAN} />
+                  </Svg>
+                </Pressable>
+                {i === stageIndex ? (
+                  <Text style={styles.tapHint}>{lang === 'ar' ? 'اضغط لتقريب المؤشر' : 'Tap to pull it inward'}</Text>
+                ) : null}
+              </View>
+            );
+          }
+
           // chest
           return (
             <Pressable
@@ -382,6 +494,13 @@ const styles = StyleSheet.create({
   leverEmoji: { fontSize: 26 },
   planetRow: { flexDirection: 'row', gap: 14 },
   planetSlot: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, borderColor: BRASS_LIGHT },
+  sequenceOptionsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  sequenceOptionBtn: { width: 48, height: 48, borderRadius: 10, backgroundColor: BRASS, alignItems: 'center', justifyContent: 'center' },
+  sequenceOptionEmoji: { fontSize: 24 },
+  sequenceSlotsRow: { flexDirection: 'row', gap: 10 },
+  sequenceSlotBox: { width: 42, height: 48, borderRadius: 8, backgroundColor: WOOD_DARK, borderWidth: 2, borderColor: BRASS_LIGHT, alignItems: 'center', justifyContent: 'center' },
+  sequenceSlotBoxDone: { borderColor: GREEN },
+  sequenceSlotEmoji: { fontSize: 20 },
   chest: { alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: WOOD_LIGHT, borderRadius: 14, borderWidth: 2, borderColor: BRASS },
   chestOpen: { borderColor: GREEN, backgroundColor: 'rgba(46,204,113,0.25)' },
   chestEmoji: { fontSize: 42 },

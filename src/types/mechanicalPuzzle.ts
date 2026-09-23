@@ -4,6 +4,8 @@ export type PuzzleStageGear = {
   labelEn: string;
   step: number;
   target: number;
+  // Angle the gear starts at (Chronos Corridor's spiral gear starts pre-rotated at 120°).
+  startAngle?: number;
 };
 
 export type PuzzleStageDial = {
@@ -43,13 +45,37 @@ export type PuzzleStagePlanets = {
   target: number[];
 };
 
+// Tap an option to fill the next empty slot, in order; solved when the filled
+// sequence matches `correctOrder`. A full-but-wrong sequence resets to empty
+// (mirrors the Pygame rune-slot reference, which never costs a life on mismatch).
+export type PuzzleStageSequence = {
+  kind: 'sequence';
+  labelAr: string;
+  labelEn: string;
+  options: { id: string; emoji: string }[];
+  correctOrder: string[];
+};
+
+// A dot starts at `startValue` and moves toward the center by `step` on each tap;
+// solved once it reaches `target` or below.
+export type PuzzleStageMaze = {
+  kind: 'maze';
+  labelAr: string;
+  labelEn: string;
+  startValue: number;
+  step: number;
+  target: number;
+};
+
 export type PuzzleStage =
   | PuzzleStageGear
   | PuzzleStageDial
   | PuzzleStageSlider
   | PuzzleStageLevers
   | PuzzleStageChest
-  | PuzzleStagePlanets;
+  | PuzzleStagePlanets
+  | PuzzleStageSequence
+  | PuzzleStageMaze;
 
 export type MechanicalPuzzleMission = {
   id: string;

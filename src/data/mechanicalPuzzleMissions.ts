@@ -73,4 +73,40 @@ export const MECHANICAL_PUZZLE_MISSIONS: MechanicalPuzzleMission[] = [
       { kind: 'levers', labelAr: '3. اسحب الرافعة', labelEn: '3. Pull the lever', count: 1 },
     ],
   },
+  {
+    id: 'mech-level4',
+    number: 4,
+    characterId: 'hakeem',
+    promptAr: 'المستوى 4: أدر التروس الحلزونية، رتب الرموز، واعبر المتاهة المغناطيسية! 🌀',
+    promptEn: 'Level 4: Turn the spiral gears, order the runes, and cross the magnetic maze! 🌀',
+    hints: 4,
+    hintsAr: [
+      'أدر التروس الحلزونية العلوية حتى يتجه المؤشر للأعلى تمامًا.',
+      'اختر الرموز الثلاثة بالترتيب: الشمس، الماء، ثم النجمة.',
+      'اضغط على المتاهة عدة مرات لتقريب المؤشر المغناطيسي من المركز.',
+      'اضغط على المفتاح لفتح ممر الكرونوس أخيرًا!',
+    ],
+    hintsEn: [
+      'Turn the spiral gears until the pointer aims straight up.',
+      'Pick the three runes in order: Sun, Water, then Star.',
+      'Tap the maze a few times to pull the magnetic pointer toward the center.',
+      'Tap the key to finally open the Chronos Corridor!',
+    ],
+    stages: [
+      { kind: 'gear', labelAr: '1. أدر التروس الحلزونية', labelEn: '1. Turn the spiral gears', step: 30, target: 0, startAngle: 120 },
+      {
+        kind: 'sequence',
+        labelAr: '2. رتب الرموز',
+        labelEn: '2. Order the runes',
+        options: [
+          { id: 'sun', emoji: '☀️' },
+          { id: 'water', emoji: '💧' },
+          { id: 'star', emoji: '⭐' },
+        ],
+        correctOrder: ['sun', 'water', 'star'],
+      },
+      { kind: 'maze', labelAr: '3. اعبر المتاهة', labelEn: '3. Cross the maze', startValue: 120, step: 25, target: 20 },
+      { kind: 'chest' },
+    ],
+  },
 ];
