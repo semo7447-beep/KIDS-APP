@@ -1,7 +1,7 @@
 import React from 'react';
-import MissionScreen from '../components/MissionScreen';
-import { BUILDWORLD_MISSIONS } from '../data/buildWorldMissions';
+import LevelGame from '../components/LevelGame';
+import TileMatchGame from '../games/TileMatchGame';
 
 export default function BuildWorldScreen() {
-  return <MissionScreen missions={BUILDWORLD_MISSIONS} worldId="buildworld" />;
+  return <LevelGame titleAr="مطابقة الفواكه" titleEn="Fruit Match" background="#6E2436" maxLevel={10} Game={TileMatchGame} />;
 }

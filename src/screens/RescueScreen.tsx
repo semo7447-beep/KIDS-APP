@@ -1,7 +1,7 @@
 import React from 'react';
-import MissionScreen from '../components/MissionScreen';
-import { RESCUE_MISSIONS } from '../data/rescueMissions';
+import LevelGame from '../components/LevelGame';
+import MiniGolfGame, { COURSES } from '../games/MiniGolfGame';
 
 export default function RescueScreen() {
-  return <MissionScreen missions={RESCUE_MISSIONS} worldId="rescue" />;
+  return <LevelGame titleAr="الجولف الصغير" titleEn="Mini Golf" background="#3FA36B" maxLevel={COURSES.length} Game={MiniGolfGame} />;
 }
